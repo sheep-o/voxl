@@ -1,9 +1,9 @@
 CC := g++
-CFLAGS := -Wall -g
+CFLAGS := -Wall -g -I/opt/homebrew/include -std=c++20
 TARGET := voxl 
 
-LIBPATHS := -L/usr/lib
-LIBS := -lGL -lglfw -lGLEW
+LIBPATHS := -L/usr/lib -L/opt/homebrew/lib
+LIBS := -framework OpenGL -lglfw -lGLEW
 
 SRCS := $(wildcard *.cpp)
 OBJS := $(patsubst %.cpp, %.o, $(SRCS))

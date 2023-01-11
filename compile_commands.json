@@ -1,0 +1,7 @@
+[
+  {
+    "directory": "/Users/sheep/Projects/voxl",
+    "file": "main.cpp",
+    "command": "g++ -Wall -g -I/opt/homebrew/include -c main.cpp"
+  }
+]
