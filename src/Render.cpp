@@ -6,16 +6,32 @@
 
 Render::Render() {
     GLfloat verts[] = {
-        0.5, 0.5, 0,
-        0.5, -0.5, 0,
-        -0.5, -0.5, 0,
-
-        -0.5, -0.5, 0,
-        -0.5, 0.5, 0,
-        0.5, 0.5, 0,
+        -0.5f, -0.5f, 0.5f,  // 0: Bottom-Front-Left
+        0.5f, -0.5f, 0.5f,   // 1: Bottom-Front-Right
+        0.5f, 0.5f, 0.5f,    // 2: Top-Front-Right
+        -0.5f, 0.5f, 0.5f,   // 3: Top-Front-Left
+        -0.5f, -0.5f, -0.5f, // 4: Bottom-Back-Left
+        0.5f, -0.5f, -0.5f,  // 5: Bottom-Back-Right
+        0.5f, 0.5f, -0.5f,   // 6: Top-Back-Right
+        -0.5f, 0.5f, -0.5f   // 7: Top-Back-Left
     };
 
-    GLuint vao, vbo;
+    GLuint indices[] = {
+        // Front face
+        0, 1, 2, 0, 2, 3,
+        // Back face
+        4, 6, 5, 4, 7, 6,
+        // Top face
+        3, 2, 6, 3, 6, 7,
+        // Bottom face
+        4, 5, 1, 4, 1, 0,
+        // Right face
+        1, 5, 6, 1, 6, 2,
+        // Left face
+        4, 0, 3, 4, 3, 7
+    };
+
+    GLuint vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     
@@ -23,12 +39,19 @@ Render::Render() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), nullptr);
 
     glEnable(GL_DEPTH_TEST);
 
-    m_shader = std::make_unique<Shader>("src/vertex.glsl", "src/fragment.glsl");
+    m_shader = std::make_unique<Shader>(
+        "C:\\Users\\ramik\\OneDrive\\Documentos\\voxl\\src\\vertex.glsl", 
+        "C:\\Users\\ramik\\OneDrive\\Documentos\\voxl\\src\\fragment.glsl"
+    );
     m_camera = std::make_unique<Camera>(60, glm::vec3{0, 0, 3}, glm::vec3{0, 0, -1});
 }
 
@@ -37,8 +60,8 @@ void Render::Draw() {
     m_shader->UniformMat4("projection", m_camera->GetProj());
     m_shader->UniformMat4("view", m_camera->GetView());
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(1, 0, 1, 1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
 }

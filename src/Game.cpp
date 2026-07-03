@@ -15,7 +15,7 @@ Game::Game(int width, int height, const char *title) {
 
     glfwMakeContextCurrent(m_window);
 
-    if (!glewInit()) {
+    if (glewInit() != GLEW_OK) {
         std::cerr << "Failed to initialize GLEW" << std::endl;
         std::exit(EXIT_FAILURE);
     }
