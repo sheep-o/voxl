@@ -28,7 +28,11 @@ public:
 private:
     GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
 
-    std::vector<glm::vec3> m_verts;
+    struct Vertex {
+        GLfloat x,y,z,w,h;
+    };
+
+    std::vector<Vertex> m_verts;
     std::vector<GLuint> m_indices;
     std::array<Block, CHUNK_WIDTH*CHUNK_HEIGHT*CHUNK_DEPTH> m_blocks;
 

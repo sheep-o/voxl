@@ -14,9 +14,57 @@ Chunk::~Chunk() {
     glDeleteBuffers(1, &m_ebo);
 }
 
+
 void Chunk::BuildMesh() {
     m_verts.clear();
     m_indices.clear();
+
+    const Vertex cubeVerts[] = {
+        // Front (+Z)
+        {0, 0, 1, 0, 0},
+        {1, 0, 1, 1, 0},
+        {1, 1, 1, 1, 1},
+        {0, 1, 1, 0, 1},
+
+        // Back (-Z)
+        {1, 0, 0, 0, 0},
+        {0, 0, 0, 1, 0},
+        {0, 1, 0, 1, 1},
+        {1, 1, 0, 0, 1},
+
+        // Top (+Y)
+        {0, 1, 1, 0, 0},
+        {1, 1, 1, 1, 0},
+        {1, 1, 0, 1, 1},
+        {0, 1, 0, 0, 1},
+
+        // Bottom (-Y)
+        {0, 0, 0, 0, 0},
+        {1, 0, 0, 1, 0},
+        {1, 0, 1, 1, 1},
+        {0, 0, 1, 0, 1},
+
+        // Right (+X)
+        {1, 0, 1, 0, 0},
+        {1, 0, 0, 1, 0},
+        {1, 1, 0, 1, 1},
+        {1, 1, 1, 0, 1},
+
+        // Left (-X)
+        {0, 0, 0, 0, 0},
+        {0, 0, 1, 1, 0},
+        {0, 1, 1, 1, 1},
+        {0, 1, 0, 0, 1}
+    };
+
+    const GLuint cubeIndices[] = {
+        0, 1, 2, 0, 2, 3,
+        4, 5, 6, 4, 6, 7,
+        8, 9, 10, 8, 10, 11,
+        12, 13, 14, 12, 14, 15,
+        16, 17, 18, 16, 18, 19,
+        20, 21, 22, 20, 22, 23
+    };
 
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int y = 0; y < CHUNK_HEIGHT; y++) {
@@ -26,31 +74,16 @@ void Chunk::BuildMesh() {
                     continue;
 
                 int base = m_verts.size();
-                m_verts.push_back({x, y, z+1});
-                m_verts.push_back({x+1, y, z+1});
-                m_verts.push_back({x+1, y+1, z+1});
-                m_verts.push_back({x, y+1, z+1});
-                m_verts.push_back({x, y, z});
-                m_verts.push_back({x+1, y, z});
-                m_verts.push_back({x+1, y+1, z});
-                m_verts.push_back({x, y+1, z});
 
-                GLuint indices[] = {
-                    // Front face
-                    0, 1, 2, 0, 2, 3,
-                    // Back face
-                    4, 6, 5, 4, 7, 6,
-                    // Top face
-                    3, 2, 6, 3, 6, 7,
-                    // Bottom face
-                    4, 5, 1, 4, 1, 0,
-                    // Right face
-                    1, 5, 6, 1, 6, 2,
-                    // Left face
-                    4, 0, 3, 4, 3, 7
-                };
+                float xf = static_cast<GLfloat>(x);
+                float yf = static_cast<GLfloat>(y);
+                float zf = static_cast<GLfloat>(z);
 
-                for (int b : indices)
+                for (const Vertex &v : cubeVerts) {
+                    m_verts.push_back({v.x+xf, v.y+yf, v.z+zf, v.w, v.h});
+                }
+
+                for (int b : cubeIndices)
                     m_indices.push_back(base + b);
 
             }
@@ -62,12 +95,14 @@ void Chunk::Upload() {
     glBindVertexArray(m_vao);
 
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, m_verts.size()*sizeof(glm::vec3), m_verts.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, m_verts.size()*sizeof(Vertex), m_verts.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size()*sizeof(GLuint), m_indices.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*3, nullptr);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*5, nullptr);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*5, reinterpret_cast<void *>(sizeof(GLfloat)*3));
 }
 
 void Chunk::Draw() {
