@@ -5,6 +5,7 @@
 #include <memory>
 #include "Shader.hpp"
 #include "Camera.hpp"
+#include "Chunk.hpp"
 
 class Render {
 public:
@@ -15,6 +16,7 @@ private:
     std::vector<size_t> m_visible_chunks;
     std::unique_ptr<Shader> m_shader;
     std::unique_ptr<Camera> m_camera;
+    Chunk chunk;
 };
 
 #endif
