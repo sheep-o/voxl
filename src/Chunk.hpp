@@ -12,7 +12,8 @@ static constexpr int CHUNK_DEPTH = 16;
 
 enum class Block {
     AIR,
-    STONE
+    STONE,
+    DIRT
 };
 
 class Chunk {
