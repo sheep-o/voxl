@@ -13,7 +13,9 @@ public:
           m_front(glm::normalize(target)),
           m_up({0,1,0}),
           m_view(glm::lookAt(pos, target, m_up)), 
-          m_proj(glm::perspective(glm::radians(fov), 1280.f/720.f, 0.1f, 1000.f)) {}
+          m_proj(glm::perspective(glm::radians(fov), 1280.f/720.f, 0.1f, 1000.f)),
+          m_view_angles({-89, 0}),
+          m_prev_cur({0, 0}) {}
 
     glm::mat4 GetView() { return m_view; }
     glm::mat4 GetProj() { return m_proj; }
@@ -26,8 +28,12 @@ private:
     glm::mat4 m_view;
     glm::mat4 m_proj;
 
-    float m_speed = 2.f;
+    glm::vec2 m_view_angles;
+    glm::vec2 m_prev_cur;
+
+    float m_speed = 3.f;
     float m_prev_time = static_cast<float>(glfwGetTime());
+    float m_look_speed = 3.f;
 };
 
 #endif
