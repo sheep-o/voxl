@@ -1,4 +1,6 @@
 #include "Chunk.hpp"
+#include <cmath>
+#include "PerlinNoise.hpp"
 
 Chunk::Chunk() {
     glGenVertexArrays(1, &m_vao);
@@ -79,16 +81,20 @@ void Chunk::BuildMesh() {
                 float yf = static_cast<GLfloat>(y);
                 float zf = static_cast<GLfloat>(z);
 
+                float t = 0.5;
+                float du = (b == Block::STONE) ? 0.5f : 0;
+
+
                 // Front (+Z)
                 if (z == CHUNK_DEPTH - 1 ||
                     m_blocks[Index(x, y, z + 1)] == Block::AIR) {
                     
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf,     yf,     zf + 1, 0, 0});
-                    m_verts.push_back({xf + 1, yf,     zf + 1, 1, 0});
-                    m_verts.push_back({xf + 1, yf + 1, zf + 1, 1, 1});
-                    m_verts.push_back({xf,     yf + 1, zf + 1, 0, 1});
+                    m_verts.push_back({xf,     yf,     zf + 1, du, 0});
+                    m_verts.push_back({xf + 1, yf,     zf + 1, t+du, 0});
+                    m_verts.push_back({xf + 1, yf + 1, zf + 1, t+du, t});
+                    m_verts.push_back({xf,     yf + 1, zf + 1, du, t});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -104,10 +110,10 @@ void Chunk::BuildMesh() {
                     
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf + 1, yf,     zf, 0, 0});
-                    m_verts.push_back({xf,     yf,     zf, 1, 0});
-                    m_verts.push_back({xf,     yf + 1, zf, 1, 1});
-                    m_verts.push_back({xf + 1, yf + 1, zf, 0, 1});
+                    m_verts.push_back({xf + 1, yf,     zf, du, 0});
+                    m_verts.push_back({xf,     yf,     zf, t+du, 0});
+                    m_verts.push_back({xf,     yf + 1, zf, t+du, t});
+                    m_verts.push_back({xf + 1, yf + 1, zf, du, t});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -123,10 +129,17 @@ void Chunk::BuildMesh() {
                     
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf,     yf + 1, zf + 1, 0, 0});
-                    m_verts.push_back({xf + 1, yf + 1, zf + 1, 1, 0});
-                    m_verts.push_back({xf + 1, yf + 1, zf,     1, 1});
-                    m_verts.push_back({xf,     yf + 1, zf,     0, 1});
+                    if (b == Block::GRASS) {
+                        m_verts.push_back({xf,     yf + 1, zf + 1, 0, 0.5f});
+                        m_verts.push_back({xf + 1, yf + 1, zf + 1, 0.5f, 0.5f});
+                        m_verts.push_back({xf + 1, yf + 1, zf,     0.5f, 1.f});
+                        m_verts.push_back({xf,     yf + 1, zf,     0, 1.f});
+                    } else {
+                        m_verts.push_back({xf,     yf + 1, zf + 1, du, 0});
+                        m_verts.push_back({xf + 1, yf + 1, zf + 1, t+du, 0});
+                        m_verts.push_back({xf + 1, yf + 1, zf,     t+du, t});
+                        m_verts.push_back({xf,     yf + 1, zf,     du, t});
+                    }
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -142,10 +155,10 @@ void Chunk::BuildMesh() {
                     
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf,     yf, zf,     0, 0});
-                    m_verts.push_back({xf + 1, yf, zf,     1, 0});
-                    m_verts.push_back({xf + 1, yf, zf + 1, 1, 1});
-                    m_verts.push_back({xf,     yf, zf + 1, 0, 1});
+                    m_verts.push_back({xf,     yf, zf,     du, 0});
+                    m_verts.push_back({xf + 1, yf, zf,     t+du, 0});
+                    m_verts.push_back({xf + 1, yf, zf + 1, t+du, t});
+                    m_verts.push_back({xf,     yf, zf + 1, du, t});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -161,10 +174,10 @@ void Chunk::BuildMesh() {
                     
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf + 1, yf,     zf + 1, 0, 0});
-                    m_verts.push_back({xf + 1, yf,     zf,     1, 0});
-                    m_verts.push_back({xf + 1, yf + 1, zf,     1, 1});
-                    m_verts.push_back({xf + 1, yf + 1, zf + 1, 0, 1});
+                    m_verts.push_back({xf + 1, yf,     zf + 1, du, 0});
+                    m_verts.push_back({xf + 1, yf,     zf,     t+du, 0});
+                    m_verts.push_back({xf + 1, yf + 1, zf,     t+du, t});
+                    m_verts.push_back({xf + 1, yf + 1, zf + 1, du, t});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -180,10 +193,10 @@ void Chunk::BuildMesh() {
                     
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf, yf,     zf,     0, 0});
-                    m_verts.push_back({xf, yf,     zf + 1, 1, 0});
-                    m_verts.push_back({xf, yf + 1, zf + 1, 1, 1});
-                    m_verts.push_back({xf, yf + 1, zf,     0, 1});
+                    m_verts.push_back({xf, yf,     zf,     du, 0});
+                    m_verts.push_back({xf, yf,     zf + 1, t+du, 0});
+                    m_verts.push_back({xf, yf + 1, zf + 1, t+du, t});
+                    m_verts.push_back({xf, yf + 1, zf,     du, t});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -192,24 +205,6 @@ void Chunk::BuildMesh() {
                     m_indices.push_back(base + 2);
                     m_indices.push_back(base + 3);
                 }
-
-
-                /*
-                for (const Vertex &v : cubeVerts) {
-                    float w = 0, h = 0;
-                    if (b == Block::DIRT) {
-                        w = v.w*0.5f;
-                        h = v.h*0.5f;
-                    } else {
-                        w = v.w*0.5f+0.5f;
-                        h = v.h*0.5f;
-                    }
-                    m_verts.push_back({v.x+xf, v.y+yf, v.z+zf, w, h});
-                }
-
-                for (int b : cubeIndices)
-                    m_indices.push_back(base + b);
-                */
             }
         }
     }
@@ -242,14 +237,30 @@ void Chunk::Place(glm::vec3 &pos, Block type) {
 }
 
 void Chunk::GenTerrain() {
-    for (int x = 0; x < CHUNK_WIDTH; x++) {
-        for (int y = 0; y < CHUNK_HEIGHT; y++) {
-            for (int z = 0; z < CHUNK_DEPTH; z++) {
-                if (y >= 13) {
-                    m_blocks[Index(x, y, z)] = Block::DIRT;
-                } else {
-                    m_blocks[Index(x, y, z)] = Block::STONE;
+    constexpr int base_height = 10;
+    constexpr float amplitude = 8.0f;
+
+    siv::PerlinNoise perlin{ std::random_device{} };
+
+    for (int x = 0; x < CHUNK_WIDTH; ++x) {
+        for (int z = 0; z < CHUNK_DEPTH; ++z) {
+            int terrain_height =
+                base_height + perlin.octave2D(x, z, 10);
+
+            for (int y = 0; y < CHUNK_HEIGHT; ++y) {
+                Block block = Block::AIR;
+
+                if (y == 0) {
+                    block = Block::STONE;
+                } else if (y < terrain_height - 3) {
+                    block = Block::STONE;
+                } else if (y < terrain_height) {
+                    block = Block::DIRT;
+                } else if (y == terrain_height) {
+                    block = Block::GRASS;
                 }
+
+                m_blocks[Index(x, y, z)] = block;
             }
         }
     }
