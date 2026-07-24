@@ -5,6 +5,10 @@
 #include <array>
 #include <glm/glm.hpp>
 #include <GL/glew.h>
+#include "Shader.hpp"
+#include "Render.hpp"
+
+class Render;
 
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_HEIGHT = 16;
@@ -20,14 +24,18 @@ enum class Block {
 class Chunk {
 public:
     Chunk();
+    Chunk(glm::vec3 &pos);
     ~Chunk();
 
-    void BuildMesh();
+    void BuildMesh(Render *render);
     void Upload();
-    void Draw();
+    void Draw(Shader &shader);
     void Place(glm::vec3 &pos, Block type);
     void GenTerrain();
+    glm::vec3 GetPos() { return m_pos; }
+    Block GetBlock(glm::ivec3 pos);
 private:
+    glm::vec3 m_pos;
     GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
 
     struct Vertex {

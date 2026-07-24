@@ -1,8 +1,20 @@
 #include "Chunk.hpp"
 #include <cmath>
 #include "PerlinNoise.hpp"
+#include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
 
 Chunk::Chunk() {
+    m_pos = {0,0,0};
+    glGenVertexArrays(1, &m_vao);
+    glGenBuffers(1, &m_vbo);
+    glGenBuffers(1, &m_ebo);
+
+    m_blocks.fill(Block::AIR);
+}
+
+Chunk::Chunk(glm::vec3 &pos) {
+    m_pos = pos;
     glGenVertexArrays(1, &m_vao);
     glGenBuffers(1, &m_vbo);
     glGenBuffers(1, &m_ebo);
@@ -16,56 +28,7 @@ Chunk::~Chunk() {
     glDeleteBuffers(1, &m_ebo);
 }
 
-/*
-const Vertex cubeVerts[] = {
-    // Front (+Z)
-    {0, 0, 1, 0, 0},
-    {1, 0, 1, 1, 0},
-    {1, 1, 1, 1, 1},
-    {0, 1, 1, 0, 1},
-
-    // Back (-Z)
-    {1, 0, 0, 0, 0},
-    {0, 0, 0, 1, 0},
-    {0, 1, 0, 1, 1},
-    {1, 1, 0, 0, 1},
-
-    // Top (+Y)
-    {0, 1, 1, 0, 0},
-    {1, 1, 1, 1, 0},
-    {1, 1, 0, 1, 1},
-    {0, 1, 0, 0, 1},
-
-    // Bottom (-Y)
-    {0, 0, 0, 0, 0},
-    {1, 0, 0, 1, 0},
-    {1, 0, 1, 1, 1},
-    {0, 0, 1, 0, 1},
-
-    // Right (+X)
-    {1, 0, 1, 0, 0},
-    {1, 0, 0, 1, 0},
-    {1, 1, 0, 1, 1},
-    {1, 1, 1, 0, 1},
-
-    // Left (-X)
-    {0, 0, 0, 0, 0},
-    {0, 0, 1, 1, 0},
-    {0, 1, 1, 1, 1},
-    {0, 1, 0, 0, 1}
-};
-
-const GLuint cubeIndices[] = {
-    0, 1, 2, 0, 2, 3,
-    4, 5, 6, 4, 6, 7,
-    8, 9, 10, 8, 10, 11,
-    12, 13, 14, 12, 14, 15,
-    16, 17, 18, 16, 18, 19,
-    20, 21, 22, 20, 22, 23
-};
-*/
-
-void Chunk::BuildMesh() {
+void Chunk::BuildMesh(Render *render) {
     m_verts.clear();
     m_indices.clear();
 
@@ -81,13 +44,25 @@ void Chunk::BuildMesh() {
                 float yf = static_cast<GLfloat>(y);
                 float zf = static_cast<GLfloat>(z);
 
+                float xr = xf + m_pos.x*CHUNK_WIDTH;
+                float yr = yf + m_pos.y*CHUNK_WIDTH;
+                float zr = zf + m_pos.z*CHUNK_WIDTH;
+
                 float t = 0.5;
                 float du = (b == Block::STONE) ? 0.5f : 0;
 
+                bool draw_PZ = 
+                    // Edge of render distance
+                    ((z == CHUNK_DEPTH - 1) && (!render->ChunkExists(m_pos + glm::vec3{0,0,1}))) || 
+                    // Non-edge next to air
+                    ((z != CHUNK_DEPTH - 1) && m_blocks[Index(x, y, z + 1)] == Block::AIR) || 
+                    // Edge next to air 
+                    ((z == CHUNK_DEPTH - 1) && render->GetChunk(m_pos + glm::vec3{0,0,1})->GetBlock(glm::vec3{x, y, 0}) == Block::AIR);
 
                 // Front (+Z)
                 if (z == CHUNK_DEPTH - 1 ||
                     m_blocks[Index(x, y, z + 1)] == Block::AIR) {
+                    
                     
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
@@ -224,7 +199,11 @@ void Chunk::Upload() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*5, reinterpret_cast<void *>(sizeof(GLfloat)*3));
 }
 
-void Chunk::Draw() {
+void Chunk::Draw(Shader &shader) {
+    glm::mat4 model{1.f};
+    model = glm::translate(model, m_pos*static_cast<float>(CHUNK_WIDTH));
+    shader.UniformMat4("model", model);
+
     glBindVertexArray(m_vao);
     glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, nullptr);
 }
@@ -237,26 +216,36 @@ void Chunk::Place(glm::vec3 &pos, Block type) {
 }
 
 void Chunk::GenTerrain() {
-    constexpr int base_height = 10;
-    constexpr float amplitude = 8.0f;
+    constexpr int baseHeight = 7;
+    constexpr double amplitude = 10.0;
+    constexpr double frequency = 0.035;
 
-    siv::PerlinNoise perlin{ std::random_device{} };
+    static const siv::PerlinNoise perlin{12345u};
 
     for (int x = 0; x < CHUNK_WIDTH; ++x) {
         for (int z = 0; z < CHUNK_DEPTH; ++z) {
-            int terrain_height =
-                base_height + perlin.octave2D(x, z, 10);
+            int worldX = x + m_pos.x * CHUNK_WIDTH;
+            int worldZ = z + m_pos.z * CHUNK_DEPTH;
+
+            double noise = perlin.octave2D_01(
+                worldX * frequency,
+                worldZ * frequency,
+                4
+            );
+
+            int terrainHeight =
+                baseHeight + static_cast<int>(noise * amplitude);
 
             for (int y = 0; y < CHUNK_HEIGHT; ++y) {
                 Block block = Block::AIR;
 
                 if (y == 0) {
                     block = Block::STONE;
-                } else if (y < terrain_height - 3) {
+                } else if (y < terrainHeight - 3) {
                     block = Block::STONE;
-                } else if (y < terrain_height) {
+                } else if (y < terrainHeight) {
                     block = Block::DIRT;
-                } else if (y == terrain_height) {
+                } else if (y == terrainHeight) {
                     block = Block::GRASS;
                 }
 
@@ -264,4 +253,10 @@ void Chunk::GenTerrain() {
             }
         }
     }
+}
+
+Block Chunk::GetBlock(glm::ivec3 pos) {
+    assert(pos.x < CHUNK_WIDTH && pos.y < CHUNK_WIDTH && pos.z < CHUNK_WIDTH);
+
+    return m_blocks[Index(pos.x, pos.y, pos.z)];
 }

@@ -19,6 +19,7 @@ public:
 
     glm::mat4 GetView() { return m_view; }
     glm::mat4 GetProj() { return m_proj; }
+    glm::vec3 GetPos()  { return m_pos; }
 
     void CalculateView(GLFWwindow *window);
 private:
@@ -31,7 +32,7 @@ private:
     glm::vec2 m_view_angles;
     glm::vec2 m_prev_cur;
 
-    float m_speed = 3.f;
+    float m_speed = 12.f;
     float m_prev_time = static_cast<float>(glfwGetTime());
     float m_look_speed = 3.f;
 };
