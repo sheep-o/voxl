@@ -24,7 +24,7 @@ enum class Block {
 class Chunk {
 public:
     Chunk();
-    Chunk(glm::vec3 &pos);
+    Chunk(glm::vec3 pos);
     ~Chunk();
 
     void BuildMesh(Render *render);

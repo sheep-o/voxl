@@ -34,7 +34,7 @@ private:
 
     float m_speed = 12.f;
     float m_prev_time = static_cast<float>(glfwGetTime());
-    float m_look_speed = 3.f;
+    float m_look_speed = 10.f;
 };
 
 #endif

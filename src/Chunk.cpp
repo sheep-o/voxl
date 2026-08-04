@@ -13,7 +13,7 @@ Chunk::Chunk() {
     m_blocks.fill(Block::AIR);
 }
 
-Chunk::Chunk(glm::vec3 &pos) {
+Chunk::Chunk(glm::vec3 pos) {
     m_pos = pos;
     glGenVertexArrays(1, &m_vao);
     glGenBuffers(1, &m_vbo);
@@ -44,26 +44,19 @@ void Chunk::BuildMesh(Render *render) {
                 float yf = static_cast<GLfloat>(y);
                 float zf = static_cast<GLfloat>(z);
 
-                float xr = xf + m_pos.x*CHUNK_WIDTH;
-                float yr = yf + m_pos.y*CHUNK_WIDTH;
-                float zr = zf + m_pos.z*CHUNK_WIDTH;
-
                 float t = 0.5;
                 float du = (b == Block::STONE) ? 0.5f : 0;
 
                 bool draw_PZ = 
                     // Edge of render distance
-                    ((z == CHUNK_DEPTH - 1) && (!render->ChunkExists(m_pos + glm::vec3{0,0,1}))) || 
+                    ((z == CHUNK_DEPTH - 1) && (!render->ChunkExists(m_pos - glm::vec3{0,0,1}))) || 
                     // Non-edge next to air
                     ((z != CHUNK_DEPTH - 1) && m_blocks[Index(x, y, z + 1)] == Block::AIR) || 
                     // Edge next to air 
-                    ((z == CHUNK_DEPTH - 1) && render->GetChunk(m_pos + glm::vec3{0,0,1})->GetBlock(glm::vec3{x, y, 0}) == Block::AIR);
+                    ((z == CHUNK_DEPTH - 1) && render->ChunkExists(m_pos - glm::vec3{0,0,1}) && render->GetChunk(m_pos - glm::vec3{0,0,1})->GetBlock(glm::vec3{x, y, 0}) == Block::AIR);
 
                 // Front (+Z)
-                if (z == CHUNK_DEPTH - 1 ||
-                    m_blocks[Index(x, y, z + 1)] == Block::AIR) {
-                    
-                    
+                if (draw_PZ) {
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf,     yf,     zf + 1, du, 0});
