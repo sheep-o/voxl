@@ -42,7 +42,7 @@ Render::Render() {
     int z = std::floor(m_camera->GetPos().z) / CHUNK_WIDTH;
     for (int i = x - RADIUS; i <= x + RADIUS; i++) {
         for (int j = z - RADIUS; j <= z + RADIUS; j++) {
-            auto chunk = std::make_shared<Chunk>(glm::vec3{i, 0, j});
+            auto chunk = std::make_shared<Chunk>(glm::ivec3{i, 0, j});
             chunk->GenTerrain();
             m_unbuilt_chunks.push(chunk);
             m_chunks.emplace(chunk->GetPos(), chunk);
@@ -91,7 +91,7 @@ void Render::Draw() {
         for (int i = x - RADIUS; i <= x + RADIUS; i++) {
             for (int j = z - RADIUS; j <= z + RADIUS; j++) {
                 if (m_chunks.find(glm::ivec3{i, 0, j}) == m_chunks.end()) {
-                    auto chunk = std::make_shared<Chunk>(glm::vec3{i, 0, j});
+                    auto chunk = std::make_shared<Chunk>(glm::ivec3{i, 0, j});
                     chunk->GenTerrain();
                     m_unbuilt_chunks.push(chunk);
                     m_chunks.emplace(chunk->GetPos(), chunk);

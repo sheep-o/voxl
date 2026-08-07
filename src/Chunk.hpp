@@ -13,6 +13,7 @@ class Render;
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_HEIGHT = 16;
 static constexpr int CHUNK_DEPTH = 16;
+static constexpr int CHUNK_SIZE = CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH;
 
 enum class Block {
     AIR,
@@ -24,19 +25,19 @@ enum class Block {
 class Chunk {
 public:
     Chunk();
-    Chunk(glm::vec3 pos);
+    Chunk(glm::ivec3 pos);
     ~Chunk();
 
     void BuildMesh(Render *render);
     void Upload();
     void Draw(Shader &shader);
-    void Place(glm::vec3 &pos, Block type);
+    void Place(glm::ivec3 &pos, Block type);
     void GenTerrain();
-    glm::vec3 GetPos() { return m_pos; }
+    glm::ivec3 GetPos() { return m_pos; }
     Block GetBlock(glm::ivec3 pos);
     bool IsBuilt() { return m_built; }
 private:
-    glm::vec3 m_pos;
+    glm::ivec3 m_pos;
     GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
     bool m_built = false;
 
@@ -46,7 +47,7 @@ private:
 
     std::vector<Vertex> m_verts;
     std::vector<GLuint> m_indices;
-    std::array<Block, CHUNK_WIDTH*CHUNK_HEIGHT*CHUNK_DEPTH> m_blocks;
+    std::array<Block, CHUNK_SIZE> m_blocks;
 
     int Index(int x, int y, int z) {
         return x + CHUNK_WIDTH * (z + CHUNK_DEPTH * y);

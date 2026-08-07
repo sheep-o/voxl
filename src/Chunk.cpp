@@ -13,7 +13,7 @@ Chunk::Chunk() {
     m_blocks.fill(Block::AIR);
 }
 
-Chunk::Chunk(glm::vec3 pos) {
+Chunk::Chunk(glm::ivec3 pos) {
     m_pos = pos;
     glGenVertexArrays(1, &m_vao);
     glGenBuffers(1, &m_vbo);
@@ -221,14 +221,17 @@ void Chunk::Upload() {
 
 void Chunk::Draw(Shader &shader) {
     glm::mat4 model{1.f};
-    model = glm::translate(model, m_pos*static_cast<float>(CHUNK_WIDTH));
+    model = glm::translate(
+        model, 
+        glm::vec3(m_pos)*static_cast<float>(CHUNK_WIDTH)
+    );
     shader.UniformMat4("model", model);
 
     glBindVertexArray(m_vao);
     glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, nullptr);
 }
 
-void Chunk::Place(glm::vec3 &pos, Block type) {
+void Chunk::Place(glm::ivec3 &pos, Block type) {
     int i = Index(pos.x, pos.y, pos.z);
     if (i >= m_blocks.size()) return;
 
