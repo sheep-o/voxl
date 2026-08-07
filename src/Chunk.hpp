@@ -34,9 +34,11 @@ public:
     void GenTerrain();
     glm::vec3 GetPos() { return m_pos; }
     Block GetBlock(glm::ivec3 pos);
+    bool IsBuilt() { return m_built; }
 private:
     glm::vec3 m_pos;
     GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
+    bool m_built = false;
 
     struct Vertex {
         GLfloat x,y,z,w,h;

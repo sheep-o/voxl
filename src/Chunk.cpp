@@ -40,20 +40,54 @@ void Chunk::BuildMesh(Render *render) {
                 if (b == Block::AIR) 
                     continue;
 
-                float xf = static_cast<GLfloat>(x);
-                float yf = static_cast<GLfloat>(y);
-                float zf = static_cast<GLfloat>(z);
+                int xr = x+static_cast<int>(m_pos.x) * CHUNK_WIDTH;
+                int yr = y+static_cast<int>(m_pos.y) * CHUNK_HEIGHT;
+                int zr = z+static_cast<int>(m_pos.z) * CHUNK_DEPTH;
 
                 float t = 0.5;
                 float du = (b == Block::STONE) ? 0.5f : 0;
 
-                bool draw_PZ = 
-                    // Edge of render distance
-                    ((z == CHUNK_DEPTH - 1) && (!render->ChunkExists(m_pos - glm::vec3{0,0,1}))) || 
-                    // Non-edge next to air
-                    ((z != CHUNK_DEPTH - 1) && m_blocks[Index(x, y, z + 1)] == Block::AIR) || 
-                    // Edge next to air 
-                    ((z == CHUNK_DEPTH - 1) && render->ChunkExists(m_pos - glm::vec3{0,0,1}) && render->GetChunk(m_pos - glm::vec3{0,0,1})->GetBlock(glm::vec3{x, y, 0}) == Block::AIR);
+                bool draw_PZ, draw_NZ, draw_PY, draw_NY, draw_PX, draw_NX;
+                if (z < CHUNK_DEPTH - 1) {
+                    draw_PZ = (m_blocks[Index(x, y, z + 1)] == Block::AIR);
+                } else {
+                    draw_PZ = (render->GetBlock(glm::ivec3{xr, yr, zr + 1}) == Block::AIR);
+                }
+
+                if (z > 0) {
+                    draw_NZ = (m_blocks[Index(x, y, z - 1)] == Block::AIR);
+                } else {
+                    draw_NZ = (render->GetBlock(glm::ivec3{xr, yr, zr - 1}) == Block::AIR);
+                }
+
+                if (y < CHUNK_HEIGHT - 1) {
+                    draw_PY = (m_blocks[Index(x, y + 1, z)] == Block::AIR);
+                } else {
+                    draw_PY = (render->GetBlock(glm::ivec3{xr, yr + 1, zr}) == Block::AIR);
+                }
+
+                if (y > 0) {
+                    draw_NY = (m_blocks[Index(x, y - 1, z)] == Block::AIR);
+                } else {
+                    draw_NY = (render->GetBlock(glm::ivec3{xr, yr - 1, zr}) == Block::AIR);
+                }
+
+                if (x < CHUNK_WIDTH - 1) {
+                    draw_PX = (m_blocks[Index(x + 1, y, z)] == Block::AIR);
+                } else {
+                    draw_PX = (render->GetBlock(glm::ivec3{xr + 1, yr, zr}) == Block::AIR);
+                }
+
+                if (x > 0) {
+                    draw_NX = (m_blocks[Index(x - 1, y, z)] == Block::AIR);
+                } else {
+                    draw_NX = (render->GetBlock(glm::ivec3{xr - 1, yr, zr}) == Block::AIR);
+                }
+
+
+                float xf = static_cast<GLfloat>(x);
+                float yf = static_cast<GLfloat>(y);
+                float zf = static_cast<GLfloat>(z);
 
                 // Front (+Z)
                 if (draw_PZ) {
@@ -73,8 +107,7 @@ void Chunk::BuildMesh(Render *render) {
                 }
 
                 // Back (-Z)
-                if (z == 0 ||
-                    m_blocks[Index(x, y, z - 1)] == Block::AIR) {
+                if (draw_NZ) {
                     
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
@@ -92,9 +125,7 @@ void Chunk::BuildMesh(Render *render) {
                 }
 
                 // Top (+Y)
-                if (y == CHUNK_HEIGHT - 1 ||
-                    m_blocks[Index(x, y + 1, z)] == Block::AIR) {
-                    
+                if (draw_PY) {
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
                     if (b == Block::GRASS) {
@@ -118,9 +149,7 @@ void Chunk::BuildMesh(Render *render) {
                 }
 
                 // Bottom (-Y)
-                if (y == 0 ||
-                    m_blocks[Index(x, y - 1, z)] == Block::AIR) {
-                    
+                if (draw_NY) {
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf,     yf, zf,     du, 0});
@@ -137,9 +166,7 @@ void Chunk::BuildMesh(Render *render) {
                 }
 
                 // Right (+X)
-                if (x == CHUNK_WIDTH - 1 ||
-                    m_blocks[Index(x + 1, y, z)] == Block::AIR) {
-                    
+                if (draw_PX) {
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf + 1, yf,     zf + 1, du, 0});
@@ -156,9 +183,7 @@ void Chunk::BuildMesh(Render *render) {
                 }
 
                 // Left (-X)
-                if (x == 0 ||
-                    m_blocks[Index(x - 1, y, z)] == Block::AIR) {
-                    
+                if (draw_NX) {
                     GLuint base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf, yf,     zf,     du, 0});
@@ -176,6 +201,8 @@ void Chunk::BuildMesh(Render *render) {
             }
         }
     }
+
+    m_built = true;
 }
 
 void Chunk::Upload() {

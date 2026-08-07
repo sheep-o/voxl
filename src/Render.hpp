@@ -9,6 +9,7 @@
 #include "Camera.hpp"
 #include "Chunk.hpp"
 
+enum class Block;
 class Chunk;
 
 class Render {
@@ -18,6 +19,7 @@ public:
     void UpdateCamera(GLFWwindow *window) { m_camera->CalculateView(window); };
     bool ChunkExists(glm::ivec3 pos);
     std::shared_ptr<Chunk> GetChunk(glm::ivec3 pos);
+    Block GetBlock(glm::ivec3 pos);
 
     static constexpr int RADIUS = 16;
 private:
