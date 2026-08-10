@@ -2,7 +2,6 @@
 #include <cmath>
 #include "PerlinNoise.hpp"
 #include <glm/gtc/matrix_transform.hpp>
-#include <iostream>
 
 Chunk::Chunk() {
     m_pos = {0,0,0};
@@ -13,7 +12,7 @@ Chunk::Chunk() {
     m_blocks.fill(Block::AIR);
 }
 
-Chunk::Chunk(glm::ivec3 pos) {
+Chunk::Chunk(const glm::ivec3 pos) {
     m_pos = pos;
     glGenVertexArrays(1, &m_vao);
     glGenBuffers(1, &m_vbo);
@@ -26,10 +25,6 @@ Chunk::~Chunk() {
     glDeleteVertexArrays(1, &m_vao);
     glDeleteBuffers(1, &m_vbo);
     glDeleteBuffers(1, &m_ebo);
-}
-
-void Chunk::BuildMesh() {
-    m_built = true;
 }
 
 void Chunk::Upload() {
@@ -48,7 +43,7 @@ void Chunk::Upload() {
     m_uploaded = true;
 }
 
-void Chunk::Draw(Shader &shader) {
+void Chunk::Draw(Shader &shader) const {
     glm::mat4 model{1.f};
     model = glm::translate(
         model, 
@@ -60,8 +55,8 @@ void Chunk::Draw(Shader &shader) {
     glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, nullptr);
 }
 
-void Chunk::Place(glm::ivec3 &pos, Block type) {
-    int i = Index(pos.x, pos.y, pos.z);
+void Chunk::Place(const glm::ivec3 &pos, const Block type) {
+    const int i = Index(pos.x, pos.y, pos.z);
     if (i >= m_blocks.size()) return;
 
     m_blocks[i] = type;
@@ -105,9 +100,11 @@ void Chunk::GenTerrain() {
             }
         }
     }
+
+    m_state = State::GENERATED;
 }
 
-Block Chunk::GetBlock(glm::ivec3 pos) {
+Chunk::Block Chunk::GetBlock(const glm::ivec3 pos) const {
     assert(pos.x < CHUNK_WIDTH && pos.y < CHUNK_WIDTH && pos.z < CHUNK_WIDTH);
 
     return m_blocks[Index(pos.x, pos.y, pos.z)];

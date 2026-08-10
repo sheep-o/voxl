@@ -1,19 +1,22 @@
 #include "MeshingEngine.hpp"
+#include <thread>
 
 void MeshingEngine::req_internal(glm::ivec3 pos) {
     {
         if (m_chunks.find(pos) == m_chunks.end()) {
             auto chunk = std::make_shared<Chunk>(pos);
             chunk->GenTerrain();
+            chunk->SetState(Chunk::State::GENERATED);
             m_chunks.emplace(pos, chunk);
         } else {
-            if (!m_chunks[pos]->IsBuilt()) {
+            if (m_chunks[pos]->GetState() != Chunk::State::UPLOADED) {
                 return;
             }
         }
 
         {
-            std::lock_guard<std::mutex> lock(m_requests_mutex);
+            std::lock_guard requests_lock(m_requests_mutex);
+            m_chunks[pos]->SetState(Chunk::State::QUEUED);
             m_requests.push(pos);
         }
     }
@@ -23,18 +26,34 @@ void MeshingEngine::req_internal(glm::ivec3 pos) {
 
 void MeshingEngine::Request(glm::ivec3 pos) {
     {
-        std::lock_guard<std::mutex> lock(m_chunks_mutex);
+        std::lock_guard chunks_lock(m_chunks_mutex);
         if (m_chunks.find(pos) != m_chunks.end()) {
             return;
         }
 
         auto chunk = std::make_shared<Chunk>(pos);
         chunk->GenTerrain();
+        chunk->SetState(Chunk::State::GENERATED);
         m_chunks.emplace(pos, chunk);
 
         {
-            std::lock_guard<std::mutex> lock(m_requests_mutex);
+            std::lock_guard requests_lock(m_requests_mutex);
+            chunk->SetState(Chunk::State::QUEUED);
             m_requests.push(pos);
+
+
+            // kinda code dupe from unload?
+            glm::ivec3 offsets[4] = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
+            for (auto& offset : offsets) {
+                glm::ivec3 neighbor = pos + offset;
+                auto n_it = m_chunks.find(neighbor);
+                if (n_it != m_chunks.end() && n_it->second->GetState() == Chunk::State::UPLOADED) {
+                    n_it->second->SetState(Chunk::State::QUEUED);
+
+                    m_requests.push(neighbor);
+                    m_requests_cv.notify_one();
+                }
+            }
         }
     }
 
@@ -44,63 +63,97 @@ void MeshingEngine::Request(glm::ivec3 pos) {
 void MeshingEngine::worker() {
     while (true) {
         {
-            glm::ivec3 pos;
+            std::queue<glm::ivec3> pos;
             {
-                std::unique_lock<std::mutex> lock(m_requests_mutex);
+                std::unique_lock lock(m_requests_mutex);
                 if (m_requests.empty()) {
                     m_requests_cv.wait(lock, [this] { return !m_requests.empty(); });
                 }
-                pos = m_requests.front();
-                m_requests.pop();
-                std::cout << "Worker thread processing chunk at (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
+
+                static constexpr int CHUNKS_PER_WORKER = 4;
+                int i = 0;
+                while (!m_requests.empty() && i++ < CHUNKS_PER_WORKER) {
+                    pos.push(m_requests.front());
+                    m_requests.pop();
+                }
             }
 
-            std::shared_ptr<Chunk> chunk;
+            std::queue<std::shared_ptr<Chunk>> chunk;
             {
-                std::lock_guard<std::mutex> lock(m_chunks_mutex);
-                //m_chunks[pos]->BuildMesh();
-                chunk = m_chunks[pos];
-                //m_chunks[pos]->Upload();
+                std::lock_guard lock(m_chunks_mutex);
+                while (!pos.empty()) {
+                    auto it = m_chunks.find(pos.front());
+                    pos.pop();
+                    if (it == m_chunks.end()) {
+                        continue;
+                    }
+                    //m_chunks[pos]->BuildMesh();
+                    chunk.push(it->second);
+                    //m_chunks[pos]->Upload();
+                }
             }
-            build_mesh(chunk);
+
+            /*
+            assert(chunk);
+            assert(chunk->GetState() == Chunk::State::QUEUED);
+            */
+
+            std::queue<std::shared_ptr<Chunk>> res;
+            while (!chunk.empty()) {
+                auto c = chunk.front();
+                chunk.pop();
+                if (c->TryLock()) {
+                    build_mesh(c);
+                    c->SetState(Chunk::State::BUILT);
+                    res.push(c);
+                }
+            }
 
             {
-                std::lock_guard<std::mutex> results_lock(m_results_mutex);
-                m_results.push(m_chunks[pos]);
+                std::lock_guard results_lock(m_results_mutex);
+                while (!res.empty()) {
+                    m_results.push(res.front());
+                    res.pop();
+                }
             }
         }
     }
 }
 
+static constexpr int RAD = 16;
 
 void MeshingEngine::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
-    std::lock_guard<std::mutex> lock(m_chunks_mutex);
+    std::lock_guard lock(m_chunks_mutex);
 
     for (auto it = m_chunks.begin(); it != m_chunks.end(); ) {
-        const glm::ivec3& coord = it->first;
+        const glm::ivec3 &coord = it->first;
 
-        int dx = coord.x - cam_chunk.x;
-        int dy = coord.y - cam_chunk.y;
-        int dz = coord.z - cam_chunk.z;
+        const int dx = coord.x - cam_chunk.x;
+        //int dy = coord.y - cam_chunk.y;
+        const int dz = coord.z - cam_chunk.z;
 
-        bool tooFar =
-            std::abs(dx) > Render::RADIUS ||
-            std::abs(dz) > Render::RADIUS;
-        if (tooFar) {
+        if (std::abs(dx) > RAD || std::abs(dz) > RAD) {
+            auto chunk = it->second;
+            if (chunk->GetState() == Chunk::State::BUILDING) {
+                continue;
+            }
+
             glm::ivec3 pos = it->first;
-            std::cout << "Unloading chunk at (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
             it = m_chunks.erase(it);
 
             glm::ivec3 offsets[4] = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
             for (auto& offset : offsets) {
-                /*
-                auto neighbor = GetChunk(pos + offset);
-                if (neighbor && neighbor->IsBuilt()) {
-                    m_unbuilt_chunks.push(neighbor);
+                glm::ivec3 neighbor = pos + offset;
+                auto n_it = m_chunks.find(neighbor);
+                if (n_it != m_chunks.end() && n_it->second->GetState() == Chunk::State::UPLOADED) {
+                    n_it->second->SetState(Chunk::State::QUEUED);
+
+                    {
+                        std::lock_guard requests_lock(m_requests_mutex);
+                        m_requests.push(neighbor);
+                    }
+                    m_requests_cv.notify_one();
                 }
-               */
-               std::cout << "Requesting chunk at (" << pos.x + offset.x << ", " << pos.y + offset.y << ", " << pos.z + offset.z << ")" << std::endl;
-               req_internal(pos + offset);
             }
         } else {
             ++it;
@@ -109,15 +162,19 @@ void MeshingEngine::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
 }
 
 void MeshingEngine::Draw(Shader &shader) {
-    std::lock_guard<std::mutex> lock(m_chunks_mutex);
+    std::lock_guard lock(m_chunks_mutex);
 
     for (auto &[coord, c] : m_chunks) {
-        if (c->IsBuilt() && c->IsUploaded()) {
+        if (c->GetState() == Chunk::State::UPLOADED || c->IsUploaded()) {
             c->Draw(shader);
         }
     }
 }
 
+std::shared_ptr<Chunk> MeshingEngine::get_chunk(glm::ivec3 pos) {
+    const auto it = m_chunks.find(pos);
+    return it != m_chunks.end() ? it->second : nullptr;
+}
 
 void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
     auto &m_verts = chunk->GetVerts();
@@ -126,66 +183,75 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
     m_verts.clear();
     m_indices.clear();
 
+    std::shared_ptr<Chunk> pz, nz, py, ny, px ,nx;
+
+    {
+        std::lock_guard lock(m_chunks_mutex);
+
+        pz = get_chunk(chunk->GetPos() + glm::ivec3{0, 0, 1});
+        nz = get_chunk(chunk->GetPos() + glm::ivec3{0, 0, -1});
+        py = get_chunk(chunk->GetPos() + glm::ivec3{0, 1, 0});
+        ny = get_chunk(chunk->GetPos() + glm::ivec3{0, -1, 0});
+        px = get_chunk(chunk->GetPos() + glm::ivec3{1, 0, 0});
+        nx = get_chunk(chunk->GetPos() + glm::ivec3{-1, 0, 0});
+    }
+
     for (int x = 0; x < CHUNK_WIDTH; x++) {
         for (int y = 0; y < CHUNK_HEIGHT; y++) {
             for (int z = 0; z < CHUNK_DEPTH; z++) {
 
                 auto b = chunk->GetBlock(glm::ivec3{x, y, z});
-                if (b == Block::AIR) 
+                if (b == Chunk::Block::AIR)
                     continue;
 
-                int xr = x+static_cast<int>(chunk->GetPos().x) * CHUNK_WIDTH;
-                int yr = y+static_cast<int>(chunk->GetPos().y) * CHUNK_HEIGHT;
-                int zr = z+static_cast<int>(chunk->GetPos().z) * CHUNK_DEPTH;
-
                 float t = 0.5;
-                float du = (b == Block::STONE) ? 0.5f : 0;
+                float du = (b == Chunk::Block::STONE) ? 0.5f : 0;
 
                 bool draw_PZ, draw_NZ, draw_PY, draw_NY, draw_PX, draw_NX;
                 if (z < CHUNK_DEPTH - 1) {
-                    draw_PZ = (chunk->GetBlock(glm::ivec3{x, y, z + 1}) == Block::AIR);
+                    draw_PZ = (chunk->GetBlock(glm::ivec3{x, y, z + 1}) == Chunk::Block::AIR);
                 } else {
-                    draw_PZ = (this->GetBlock(glm::ivec3{xr, yr, zr + 1}) == Block::AIR);
+                    draw_PZ = !pz || pz->GetBlock(glm::ivec3{x, y, 0}) == Chunk::Block::AIR;
                 }
 
                 if (z > 0) {
-                    draw_NZ = (chunk->GetBlock(glm::ivec3{x, y, z - 1}) == Block::AIR);
+                    draw_NZ = (chunk->GetBlock(glm::ivec3{x, y, z - 1}) == Chunk::Block::AIR);
                 } else {
-                    draw_NZ = (this->GetBlock(glm::ivec3{xr, yr, zr - 1}) == Block::AIR);
+                    draw_NZ = !nz || nz->GetBlock(glm::ivec3{x, y, CHUNK_DEPTH - 1}) == Chunk::Block::AIR;
                 }
 
                 if (y < CHUNK_HEIGHT - 1) {
-                    draw_PY = (chunk->GetBlock(glm::ivec3{x, y + 1, z}) == Block::AIR);
+                    draw_PY = (chunk->GetBlock(glm::ivec3{x, y + 1, z}) == Chunk::Block::AIR);
                 } else {
-                    draw_PY = (this->GetBlock(glm::ivec3{xr, yr + 1, zr}) == Block::AIR);
+                    draw_PY = !py || py->GetBlock(glm::ivec3{x, 0, z}) == Chunk::Block::AIR;
                 }
 
                 if (y > 0) {
-                    draw_NY = (chunk->GetBlock(glm::ivec3{x, y - 1, z}) == Block::AIR);
+                    draw_NY = (chunk->GetBlock(glm::ivec3{x, y - 1, z}) == Chunk::Block::AIR);
                 } else {
-                    draw_NY = (this->GetBlock(glm::ivec3{xr, yr - 1, zr}) == Block::AIR);
+                    draw_NY = !ny || ny->GetBlock(glm::ivec3{x, CHUNK_HEIGHT - 1, z}) == Chunk::Block::AIR;
                 }
 
                 if (x < CHUNK_WIDTH - 1) {
-                    draw_PX = (chunk->GetBlock(glm::ivec3{x + 1, y, z}) == Block::AIR);
+                    draw_PX = (chunk->GetBlock(glm::ivec3{x + 1, y, z}) == Chunk::Block::AIR);
                 } else {
-                    draw_PX = (this->GetBlock(glm::ivec3{xr + 1, yr, zr}) == Block::AIR);
+                    draw_PX = !px || px->GetBlock(glm::ivec3{0, y, z}) == Chunk::Block::AIR;
                 }
 
                 if (x > 0) {
-                    draw_NX = (chunk->GetBlock(glm::ivec3{x - 1, y, z}) == Block::AIR);
+                    draw_NX = (chunk->GetBlock(glm::ivec3{x - 1, y, z}) == Chunk::Block::AIR);
                 } else {
-                    draw_NX = (this->GetBlock(glm::ivec3{xr - 1, yr, zr}) == Block::AIR);
+                    draw_NX = !nx || nx->GetBlock(glm::ivec3{CHUNK_WIDTH - 1, y, z}) == Chunk::Block::AIR;
                 }
 
 
-                float xf = static_cast<GLfloat>(x);
-                float yf = static_cast<GLfloat>(y);
-                float zf = static_cast<GLfloat>(z);
+                const auto xf = static_cast<GLfloat>(x);
+                const auto yf = static_cast<GLfloat>(y);
+                const auto zf = static_cast<GLfloat>(z);
 
                 // Front (+Z)
                 if (draw_PZ) {
-                    GLuint base = static_cast<GLuint>(m_verts.size());
+                    const auto base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf,     yf,     zf + 1, du, 0});
                     m_verts.push_back({xf + 1, yf,     zf + 1, t+du, 0});
@@ -203,7 +269,7 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
                 // Back (-Z)
                 if (draw_NZ) {
                     
-                    GLuint base = static_cast<GLuint>(m_verts.size());
+                    const auto base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf + 1, yf,     zf, du, 0});
                     m_verts.push_back({xf,     yf,     zf, t+du, 0});
@@ -220,9 +286,9 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
 
                 // Top (+Y)
                 if (draw_PY) {
-                    GLuint base = static_cast<GLuint>(m_verts.size());
+                    const auto base = static_cast<GLuint>(m_verts.size());
 
-                    if (b == Block::GRASS) {
+                    if (b == Chunk::Block::GRASS) {
                         m_verts.push_back({xf,     yf + 1, zf + 1, 0, 0.5f});
                         m_verts.push_back({xf + 1, yf + 1, zf + 1, 0.5f, 0.5f});
                         m_verts.push_back({xf + 1, yf + 1, zf,     0.5f, 1.f});
@@ -244,7 +310,7 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
 
                 // Bottom (-Y)
                 if (draw_NY) {
-                    GLuint base = static_cast<GLuint>(m_verts.size());
+                    const auto base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf,     yf, zf,     du, 0});
                     m_verts.push_back({xf + 1, yf, zf,     t+du, 0});
@@ -261,7 +327,7 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
 
                 // Right (+X)
                 if (draw_PX) {
-                    GLuint base = static_cast<GLuint>(m_verts.size());
+                    const auto base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf + 1, yf,     zf + 1, du, 0});
                     m_verts.push_back({xf + 1, yf,     zf,     t+du, 0});
@@ -278,7 +344,7 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
 
                 // Left (-X)
                 if (draw_NX) {
-                    GLuint base = static_cast<GLuint>(m_verts.size());
+                    const auto base = static_cast<GLuint>(m_verts.size());
 
                     m_verts.push_back({xf, yf,     zf,     du, 0});
                     m_verts.push_back({xf, yf,     zf + 1, t+du, 0});
@@ -295,15 +361,11 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
             }
         }
     }
-
-    chunk->BuildMesh();
 }
 
 
 // hmmmmmm
-Block MeshingEngine::GetBlock(glm::ivec3 pos) {
-    std::lock_guard<std::mutex> lock(m_chunks_mutex);
-
+Chunk::Block MeshingEngine::GetBlock(const glm::ivec3 pos) {
     auto int_floor_div = [](int num, int denom) {
         int res = num / denom;
         int rem = num % denom;
@@ -321,7 +383,7 @@ Block MeshingEngine::GetBlock(glm::ivec3 pos) {
 
     auto it = m_chunks.find(chunk_coord);
     if (it == m_chunks.end()) {
-        return Block::AIR;
+        return Chunk::Block::AIR;
     }
 
     auto wrapIndex = [](int i, int i_max) {
@@ -339,10 +401,16 @@ Block MeshingEngine::GetBlock(glm::ivec3 pos) {
 
 
 void MeshingEngine::Upload() {
-    std::lock_guard<std::mutex> results_lock(m_results_mutex);
-    while (!m_results.empty()) {
-        auto chunk = m_results.front();
+    static constexpr int UPLOADS_PER_FRAME = 4;
+    std::lock_guard results_lock(m_results_mutex);
+    int i = 0;
+    while (!m_results.empty() && i++ < UPLOADS_PER_FRAME) {
+        std::shared_ptr<Chunk> chunk = m_results.front();
+        assert(chunk);
+        assert(chunk->GetState() == Chunk::State::BUILT);
+
         m_results.pop();
         chunk->Upload();
+        chunk->SetState(Chunk::State::UPLOADED);
     }
 }

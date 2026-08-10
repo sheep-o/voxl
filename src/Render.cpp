@@ -15,12 +15,12 @@ Render::Render() {
     glEnable(GL_DEPTH_TEST);
 
     m_shader = std::make_shared<Shader>(
-        "../../src/vertex.glsl", 
+        "../../src/vertex.glsl",
         "../../src/fragment.glsl"
     );
     m_camera = std::make_unique<Camera>(60, glm::vec3{0, 10, 0}, glm::vec3{0, 0, -1});
     m_last_pos = m_camera->GetPos();
-    m_mesher = std::make_unique<MeshingEngine>(4, this);
+    m_mesher = std::make_unique<MeshingEngine>(8, this);
 
     GLuint texture;
     glGenTextures(1, &texture);
@@ -119,7 +119,6 @@ void Render::Draw() {
                 }
                 */
 
-                std::cout << "Requesting chunk at (" << i << ", 0, " << j << ")" << std::endl;
                 m_mesher->Request(glm::ivec3{i, 0, j});
             }
         }

@@ -5,11 +5,13 @@
 #include <glm/glm.hpp>
 #include <unordered_map>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include "Types.hpp"
+#include "Chunk.hpp"
 
 class Render;
 class Shader;
-enum class Block;
 
 class MeshingEngine {
 public:
@@ -29,7 +31,6 @@ public:
     void Upload();
 
 private:
-
     size_t m_num_threads;
     ChunkMap m_chunks;
     std::mutex m_chunks_mutex;
@@ -45,8 +46,9 @@ private:
     void worker();
     void req_internal(glm::ivec3 pos);
     void build_mesh(std::shared_ptr<Chunk> chunk);
+    std::shared_ptr<Chunk> get_chunk(glm::ivec3 pos);
 
-    Block GetBlock(glm::ivec3 pos);
+    Chunk::Block GetBlock(glm::ivec3 pos);
 };
 
 #endif

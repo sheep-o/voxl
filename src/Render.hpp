@@ -1,15 +1,12 @@
 #ifndef VOXL_RENDER_H_
 #define VOXL_RENDER_H_
 
-#include <vector>
 #include <memory>
-#include <unordered_map>
-#include <queue>
+#include <mutex>
 #include <glm/glm.hpp>
 #include "MeshingEngine.hpp"
 #include "Camera.hpp"
 #include "Chunk.hpp"
-#include "Types.hpp"
 
 enum class Block;
 class Chunk;
@@ -23,7 +20,7 @@ public:
     bool ChunkExists(glm::ivec3 pos);
     std::shared_ptr<Chunk> GetChunk(glm::ivec3 pos);
 
-    static constexpr int RADIUS = 2;
+    static constexpr int RADIUS = 16;
 private:
 
     std::shared_ptr<Shader> m_shader;

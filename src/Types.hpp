@@ -7,8 +7,6 @@
 #include <memory>
 #include "Chunk.hpp"
 
-class Chunk;
-
 struct ivec3Hash {
     std::size_t operator()(const glm::ivec3 &c) const {
         std::size_t h1 = std::hash<int>{}(c.x);

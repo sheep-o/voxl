@@ -5,66 +5,57 @@
 #include <array>
 #include <glm/glm.hpp>
 #include <GL/glew.h>
+#include <atomic>
 #include "Shader.hpp"
-#include "Render.hpp"
-
-class Render;
 
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_HEIGHT = 16;
 static constexpr int CHUNK_DEPTH = 16;
 static constexpr int CHUNK_SIZE = CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH;
 
-enum class Block {
-    AIR,
-    STONE,
-    DIRT,
-    GRASS
-};
-
 class Chunk {
 public:
+    enum class State {UNLOADED, GENERATED, QUEUED, BUILDING, BUILT, UPLOADED};
+    enum class Block {AIR, STONE, DIRT, GRASS};
+    struct Vertex { GLfloat x, y, z, w, h; };
+
     Chunk();
-    Chunk(glm::ivec3 pos);
+    explicit Chunk(glm::ivec3 pos);
     ~Chunk();
 
-    void BuildMesh();
     void Upload();
-    void Draw(Shader &shader);
-    void Place(glm::ivec3 &pos, Block type);
+    void Draw(Shader &shader) const;
+    void Place(const glm::ivec3 &pos, Block type);
     void GenTerrain();
-    glm::ivec3 GetPos() { return m_pos; }
-    Block GetBlock(glm::ivec3 pos);
-    bool IsBuilt() { return m_built; }
-    bool IsUploaded() { return m_uploaded; }
+    void SetState(const State state) { m_state.store(state); }
+    bool TryLock() {
+        auto expected = State::QUEUED;
+        return m_state.compare_exchange_strong(expected, State::BUILDING);
+    }
 
-    struct Vertex {
-        GLfloat x,y,z,w,h;
-    };
+    [[nodiscard]] Block GetBlock(glm::ivec3 pos) const;
+    [[nodiscard]] glm::ivec3 GetPos() const { return m_pos; }
+    [[nodiscard]] State GetState() const { return m_state.load(); }
+    [[nodiscard]] bool IsUploaded() const { return m_uploaded; }
 
-    enum class State {
-        UNLOADED,
-        GENERATED,
-        BUILDING,
-        BUILT,
-        UPLOADED
-    } m_state = State::UNLOADED;
-    
+    // Remove soon
     std::vector<Vertex> &GetVerts() { return m_verts; }
     std::vector<GLuint> &GetIndices() { return m_indices; }
+
 private:
     glm::ivec3 m_pos;
     GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
-    bool m_built = false;
-    bool m_uploaded = false;
 
     std::vector<Vertex> m_verts;
     std::vector<GLuint> m_indices;
     std::array<Block, CHUNK_SIZE> m_blocks;
 
-    int Index(int x, int y, int z) {
+    static int Index(const int x, const int y, const int z) {
         return x + CHUNK_WIDTH * (z + CHUNK_DEPTH * y);
     }
+
+    std::atomic<State> m_state = State::UNLOADED;
+    bool m_uploaded = false;
 };
 
 #endif
