@@ -6,6 +6,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <queue>
+#include <thread>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -19,6 +20,7 @@ Render::Render() {
     );
     m_camera = std::make_unique<Camera>(60, glm::vec3{0, 10, 0}, glm::vec3{0, 0, -1});
     m_last_pos = m_camera->GetPos();
+    m_mesher = std::make_unique<MeshingEngine>(4, this);
 
     GLuint texture;
     glGenTextures(1, &texture);
@@ -42,13 +44,19 @@ Render::Render() {
     int z = std::floor(m_camera->GetPos().z) / CHUNK_WIDTH;
     for (int i = x - RADIUS; i <= x + RADIUS; i++) {
         for (int j = z - RADIUS; j <= z + RADIUS; j++) {
+            /*
             auto chunk = std::make_shared<Chunk>(glm::ivec3{i, 0, j});
             chunk->GenTerrain();
             m_unbuilt_chunks.push(chunk);
             m_chunks.emplace(chunk->GetPos(), chunk);
+            */
+
+            m_mesher->Request(glm::ivec3{i, 0, j});
         }
     }
 }
+
+/*
 void Render::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
     for (auto it = m_chunks.begin(); it != m_chunks.end(); ) {
         const glm::ivec3& coord = it->first;
@@ -76,6 +84,7 @@ void Render::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
         }
     }
 }
+*/
 
 void Render::Draw() {
     m_shader->Use();
@@ -85,11 +94,15 @@ void Render::Draw() {
     int x = std::floor(m_camera->GetPos().x) / CHUNK_WIDTH;
     int z = std::floor(m_camera->GetPos().z) / CHUNK_WIDTH;
 
+    m_mesher->Upload();
+
     if (x != lx || z != lz) {
-        UnloadFarChunks(glm::ivec3{x, 0, z});
+        //UnloadFarChunks(glm::ivec3{x, 0, z});
+        m_mesher->UnloadFarChunks(glm::ivec3{x, 0, z});
 
         for (int i = x - RADIUS; i <= x + RADIUS; i++) {
             for (int j = z - RADIUS; j <= z + RADIUS; j++) {
+                /*
                 if (m_chunks.find(glm::ivec3{i, 0, j}) == m_chunks.end()) {
                     auto chunk = std::make_shared<Chunk>(glm::ivec3{i, 0, j});
                     chunk->GenTerrain();
@@ -104,10 +117,15 @@ void Render::Draw() {
                         }
                     }
                 }
+                */
+
+                std::cout << "Requesting chunk at (" << i << ", 0, " << j << ")" << std::endl;
+                m_mesher->Request(glm::ivec3{i, 0, j});
             }
         }
     }
 
+    /*
     for (int i = 0; i < 4; i++) {
         if (m_unbuilt_chunks.empty()) break;
         std::shared_ptr<Chunk> chunk = m_unbuilt_chunks.front();
@@ -116,6 +134,7 @@ void Render::Draw() {
         chunk->BuildMesh(this);
         chunk->Upload();
     }
+    */
 
     m_shader->UniformMat4("projection", m_camera->GetProj());
     m_shader->UniformMat4("view", m_camera->GetView());
@@ -123,15 +142,19 @@ void Render::Draw() {
     glClearColor(1, 0, 1, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    /*
     for (auto &[coord, c] : m_chunks) {
         if (c->IsBuilt()) {
             c->Draw(*m_shader);
         }
     }
+    */
+    m_mesher->Draw(*m_shader);
 
     m_last_pos = m_camera->GetPos();
 }
 
+/*
 bool Render::ChunkExists(glm::ivec3 pos) {
     return m_chunks.find(pos) != m_chunks.end();
 }
@@ -179,3 +202,4 @@ Block Render::GetBlock(glm::ivec3 pos) {
 
     return it->second->GetBlock(local_pos);
 }
+*/

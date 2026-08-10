@@ -28,7 +28,7 @@ public:
     Chunk(glm::ivec3 pos);
     ~Chunk();
 
-    void BuildMesh(Render *render);
+    void BuildMesh();
     void Upload();
     void Draw(Shader &shader);
     void Place(glm::ivec3 &pos, Block type);
@@ -36,14 +36,27 @@ public:
     glm::ivec3 GetPos() { return m_pos; }
     Block GetBlock(glm::ivec3 pos);
     bool IsBuilt() { return m_built; }
-private:
-    glm::ivec3 m_pos;
-    GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
-    bool m_built = false;
+    bool IsUploaded() { return m_uploaded; }
 
     struct Vertex {
         GLfloat x,y,z,w,h;
     };
+
+    enum class State {
+        UNLOADED,
+        GENERATED,
+        BUILDING,
+        BUILT,
+        UPLOADED
+    } m_state = State::UNLOADED;
+    
+    std::vector<Vertex> &GetVerts() { return m_verts; }
+    std::vector<GLuint> &GetIndices() { return m_indices; }
+private:
+    glm::ivec3 m_pos;
+    GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
+    bool m_built = false;
+    bool m_uploaded = false;
 
     std::vector<Vertex> m_verts;
     std::vector<GLuint> m_indices;
