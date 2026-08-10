@@ -1,29 +1,6 @@
 #include "MeshingEngine.hpp"
 #include <thread>
 
-void MeshingEngine::req_internal(glm::ivec3 pos) {
-    {
-        if (m_chunks.find(pos) == m_chunks.end()) {
-            auto chunk = std::make_shared<Chunk>(pos);
-            chunk->GenTerrain();
-            chunk->SetState(Chunk::State::GENERATED);
-            m_chunks.emplace(pos, chunk);
-        } else {
-            if (m_chunks[pos]->GetState() != Chunk::State::UPLOADED) {
-                return;
-            }
-        }
-
-        {
-            std::lock_guard requests_lock(m_requests_mutex);
-            m_chunks[pos]->SetState(Chunk::State::QUEUED);
-            m_requests.push(pos);
-        }
-    }
-
-    m_requests_cv.notify_one();
-}
-
 void MeshingEngine::Request(glm::ivec3 pos) {
     {
         std::lock_guard chunks_lock(m_chunks_mutex);
@@ -87,16 +64,10 @@ void MeshingEngine::worker() {
                     if (it == m_chunks.end()) {
                         continue;
                     }
-                    //m_chunks[pos]->BuildMesh();
+
                     chunk.push(it->second);
-                    //m_chunks[pos]->Upload();
                 }
             }
-
-            /*
-            assert(chunk);
-            assert(chunk->GetState() == Chunk::State::QUEUED);
-            */
 
             std::queue<std::shared_ptr<Chunk>> res;
             while (!chunk.empty()) {
@@ -161,12 +132,18 @@ void MeshingEngine::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
     }
 }
 
-void MeshingEngine::Draw(Shader &shader) {
+void MeshingEngine::Draw(std::shared_ptr<Shader> shader, std::shared_ptr<Camera> camera) {
     std::lock_guard lock(m_chunks_mutex);
+
+    Camera::Frustum frustum = camera->GetFrustum();
 
     for (auto &[coord, c] : m_chunks) {
         if (c->GetState() == Chunk::State::UPLOADED || c->IsUploaded()) {
-            c->Draw(shader);
+            glm::vec3 min = glm::vec3(c->GetPos()) * glm::vec3(CHUNK_WIDTH, CHUNK_HEIGHT, CHUNK_DEPTH);
+            glm::vec3 max = min + glm::vec3(CHUNK_WIDTH, CHUNK_HEIGHT, CHUNK_DEPTH);
+            if (frustum.IsBoxVisible(min, max)) {
+                c->Draw(shader);
+            }
         }
     }
 }
@@ -363,45 +340,8 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
     }
 }
 
-
-// hmmmmmm
-Chunk::Block MeshingEngine::GetBlock(const glm::ivec3 pos) {
-    auto int_floor_div = [](int num, int denom) {
-        int res = num / denom;
-        int rem = num % denom;
-        if (rem != 0 && ((num < 0) ^ (denom < 0))) {
-            res -= 1;
-        }
-        return res;
-    };
-
-    glm::ivec3 chunk_coord{
-        int_floor_div(pos.x, CHUNK_WIDTH),
-        int_floor_div(pos.y, CHUNK_HEIGHT),
-        int_floor_div(pos.z, CHUNK_DEPTH)
-    };
-
-    auto it = m_chunks.find(chunk_coord);
-    if (it == m_chunks.end()) {
-        return Chunk::Block::AIR;
-    }
-
-    auto wrapIndex = [](int i, int i_max) {
-        return ((i % i_max) + i_max) % i_max;
-    };
-
-    glm::ivec3 local_pos{
-        wrapIndex(pos.x, CHUNK_WIDTH),
-        wrapIndex(pos.y, CHUNK_HEIGHT),
-        wrapIndex(pos.z, CHUNK_DEPTH)
-    };
-
-    return it->second->GetBlock(local_pos);
-}
-
-
 void MeshingEngine::Upload() {
-    static constexpr int UPLOADS_PER_FRAME = 4;
+    static constexpr int UPLOADS_PER_FRAME = 16;
     std::lock_guard results_lock(m_results_mutex);
     int i = 0;
     while (!m_results.empty() && i++ < UPLOADS_PER_FRAME) {

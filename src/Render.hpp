@@ -22,16 +22,13 @@ public:
 
     static constexpr int RADIUS = 16;
 private:
-
     std::shared_ptr<Shader> m_shader;
-    std::unique_ptr<Camera> m_camera;
+    std::shared_ptr<Camera> m_camera;
     glm::vec3 m_last_pos;
 
     std::mutex m_chunks_mutex;
 
     std::unique_ptr<MeshingEngine> m_mesher;
-
-    //void UnloadFarChunks(const glm::ivec3 &cam_chunk);
 };
 
 

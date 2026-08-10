@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include "Types.hpp"
 #include "Chunk.hpp"
+#include "Camera.hpp"
 
 class Render;
 class Shader;
@@ -27,7 +28,7 @@ public:
 
     void Request(glm::ivec3 pos);
     void UnloadFarChunks(const glm::ivec3 &cam_chunk);
-    void Draw(Shader &shader);
+    void Draw(std::shared_ptr<Shader> shader, std::shared_ptr<Camera> camera);
     void Upload();
 
 private:

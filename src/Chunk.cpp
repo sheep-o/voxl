@@ -43,13 +43,13 @@ void Chunk::Upload() {
     m_uploaded = true;
 }
 
-void Chunk::Draw(Shader &shader) const {
+void Chunk::Draw(std::shared_ptr<Shader> shader) const {
     glm::mat4 model{1.f};
     model = glm::translate(
         model, 
         glm::vec3(m_pos)*static_cast<float>(CHUNK_WIDTH)
     );
-    shader.UniformMat4("model", model);
+    shader->UniformMat4("model", model);
 
     glBindVertexArray(m_vao);
     glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, nullptr);

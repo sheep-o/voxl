@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <GL/glew.h>
 #include <atomic>
+#include <memory>
 #include "Shader.hpp"
 
 static constexpr int CHUNK_WIDTH = 16;
@@ -24,7 +25,7 @@ public:
     ~Chunk();
 
     void Upload();
-    void Draw(Shader &shader) const;
+    void Draw(std::shared_ptr<Shader> shader) const;
     void Place(const glm::ivec3 &pos, Block type);
     void GenTerrain();
     void SetState(const State state) { m_state.store(state); }
