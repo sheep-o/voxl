@@ -100,7 +100,7 @@ void MeshingEngine::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
         const glm::ivec3 &coord = it->first;
 
         const int dx = coord.x - cam_chunk.x;
-        //int dy = coord.y - cam_chunk.y;
+        /*int dy = coord.y - cam_chunk.y;*/
         const int dz = coord.z - cam_chunk.z;
 
         if (std::abs(dx) > RAD || std::abs(dz) > RAD) {
