@@ -32,12 +32,17 @@ public:
     void Upload();
 
 private:
+    struct Req {
+        enum class Type {TERRAIN, MESH} type;
+        glm::ivec3 pos;
+    };
+
     size_t m_num_threads;
     ChunkMap m_chunks;
     std::mutex m_chunks_mutex;
     Render *m_render;
 
-    std::queue<glm::ivec3> m_requests;
+    std::queue<Req> m_requests;
     std::mutex m_requests_mutex;
     std::condition_variable m_requests_cv;
 

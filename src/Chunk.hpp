@@ -9,14 +9,14 @@
 #include <memory>
 #include "Shader.hpp"
 
-static constexpr int CHUNK_WIDTH = 16;
-static constexpr int CHUNK_HEIGHT = 16;
-static constexpr int CHUNK_DEPTH = 16;
+static constexpr int CHUNK_WIDTH = 32;
+static constexpr int CHUNK_HEIGHT = 32;
+static constexpr int CHUNK_DEPTH = 32;
 static constexpr int CHUNK_SIZE = CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH;
 
 class Chunk {
 public:
-    enum class State {UNLOADED, GENERATED, QUEUED, BUILDING, BUILT, UPLOADED};
+    enum class State {UNLOADED, GENERATED, BUILDING, BUILT, UPLOADED};
     enum class Block {AIR, STONE, DIRT, GRASS};
     struct Vertex { GLfloat x, y, z, w, h; };
 
@@ -30,7 +30,7 @@ public:
     void GenTerrain();
     void SetState(const State state) { m_state.store(state); }
     bool TryLock() {
-        auto expected = State::QUEUED;
+        auto expected = State::GENERATED;
         return m_state.compare_exchange_strong(expected, State::BUILDING);
     }
 

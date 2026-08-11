@@ -9,28 +9,13 @@ void MeshingEngine::Request(glm::ivec3 pos) {
         }
 
         auto chunk = std::make_shared<Chunk>(pos);
-        chunk->GenTerrain();
-        chunk->SetState(Chunk::State::GENERATED);
         m_chunks.emplace(pos, chunk);
 
         {
             std::lock_guard requests_lock(m_requests_mutex);
-            chunk->SetState(Chunk::State::QUEUED);
-            m_requests.push(pos);
-
-
-            // kinda code dupe from unload?
-            glm::ivec3 offsets[4] = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
-            for (auto& offset : offsets) {
-                glm::ivec3 neighbor = pos + offset;
-                auto n_it = m_chunks.find(neighbor);
-                if (n_it != m_chunks.end() && n_it->second->GetState() == Chunk::State::UPLOADED) {
-                    n_it->second->SetState(Chunk::State::QUEUED);
-
-                    m_requests.push(neighbor);
-                    m_requests_cv.notify_one();
-                }
-            }
+            m_requests.push({
+                Req::Type::TERRAIN, pos
+            });
         }
     }
 
@@ -40,51 +25,76 @@ void MeshingEngine::Request(glm::ivec3 pos) {
 void MeshingEngine::worker() {
     while (true) {
         {
-            std::queue<glm::ivec3> pos;
+            Req r;
             {
                 std::unique_lock lock(m_requests_mutex);
                 if (m_requests.empty()) {
                     m_requests_cv.wait(lock, [this] { return !m_requests.empty(); });
                 }
 
-                static constexpr int CHUNKS_PER_WORKER = 4;
-                int i = 0;
-                while (!m_requests.empty() && i++ < CHUNKS_PER_WORKER) {
-                    pos.push(m_requests.front());
-                    m_requests.pop();
-                }
+                r = m_requests.front();
+                m_requests.pop();
             }
 
-            std::queue<std::shared_ptr<Chunk>> chunk;
+
+            std::shared_ptr<Chunk> c, pz, nz, py, ny, px ,nx;
+
             {
-                std::lock_guard lock(m_chunks_mutex);
-                while (!pos.empty()) {
-                    auto it = m_chunks.find(pos.front());
-                    pos.pop();
-                    if (it == m_chunks.end()) {
-                        continue;
+                std::unique_lock lock(m_chunks_mutex);
+                c  = get_chunk(r.pos);
+                pz = get_chunk(r.pos + glm::ivec3{0, 0, 1});
+                nz = get_chunk(r.pos + glm::ivec3{0, 0, -1});
+                //py = get_chunk(r.pos + glm::ivec3{0, 1, 0});
+                //ny = get_chunk(r.pos + glm::ivec3{0, -1, 0});
+                px = get_chunk(r.pos + glm::ivec3{1, 0, 0});
+                nx = get_chunk(r.pos + glm::ivec3{-1, 0, 0});
+            }
+
+            if (r.type == Req::Type::TERRAIN) {
+                if (!c) continue;
+                assert(c->GetState() == Chunk::State::UNLOADED);
+                c->GenTerrain();
+                c->SetState(Chunk::State::GENERATED);
+
+                {
+                    std::unique_lock lock(m_requests_mutex);
+
+                    m_requests.push({Req::Type::MESH, r.pos});
+
+                    if (pz && pz->GetState() == Chunk::State::UPLOADED)
+                        m_requests.push({Req::Type::MESH, pz->GetPos()});
+                    if (nz && nz->GetState() == Chunk::State::UPLOADED)
+                        m_requests.push({Req::Type::MESH, nz->GetPos()});
+                    if (px && px->GetState() == Chunk::State::UPLOADED)
+                        m_requests.push({Req::Type::MESH, px->GetPos()});
+                    if (nx && nx->GetState() == Chunk::State::UPLOADED)
+                        m_requests.push({Req::Type::MESH, nx->GetPos()});
+                }
+            } else if (r.type == Req::Type::MESH) {
+                if (!c) continue;
+                assert(c->GetState() == Chunk::State::GENERATED || c->GetState() == Chunk::State::UPLOADED);
+
+                if ((pz && pz->GetState() == Chunk::State::UNLOADED) ||
+                    (nz && nz->GetState() == Chunk::State::UNLOADED) ||
+                    (px && px->GetState() == Chunk::State::UNLOADED) ||
+                    (nx && nx->GetState() == Chunk::State::UNLOADED)) 
+                {
+                    {
+                        std::lock_guard lock(m_requests_mutex);
+                        m_requests.push(r);
                     }
 
-                    chunk.push(it->second);
+                    std::this_thread::yield();
+                    continue;
                 }
-            }
 
-            std::queue<std::shared_ptr<Chunk>> res;
-            while (!chunk.empty()) {
-                auto c = chunk.front();
-                chunk.pop();
                 if (c->TryLock()) {
                     build_mesh(c);
                     c->SetState(Chunk::State::BUILT);
-                    res.push(c);
-                }
-            }
-
-            {
-                std::lock_guard results_lock(m_results_mutex);
-                while (!res.empty()) {
-                    m_results.push(res.front());
-                    res.pop();
+                    {
+                        std::lock_guard lock(m_results_mutex);
+                        m_results.push(c);
+                    }
                 }
             }
         }
@@ -117,11 +127,11 @@ void MeshingEngine::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
                 glm::ivec3 neighbor = pos + offset;
                 auto n_it = m_chunks.find(neighbor);
                 if (n_it != m_chunks.end() && n_it->second->GetState() == Chunk::State::UPLOADED) {
-                    n_it->second->SetState(Chunk::State::QUEUED);
+                    n_it->second->SetState(Chunk::State::GENERATED);
 
                     {
                         std::lock_guard requests_lock(m_requests_mutex);
-                        m_requests.push(neighbor);
+                        m_requests.push({Req::Type::MESH, neighbor});
                     }
                     m_requests_cv.notify_one();
                 }
