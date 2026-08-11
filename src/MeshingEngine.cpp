@@ -61,14 +61,22 @@ void MeshingEngine::worker() {
 
                     m_requests.push({Req::Type::MESH, r.pos});
 
-                    if (pz && pz->GetState() == Chunk::State::UPLOADED)
+                    if (pz && pz->GetState() == Chunk::State::UPLOADED) {
+                        pz->SetState(Chunk::State::GENERATED);
                         m_requests.push({Req::Type::MESH, pz->GetPos()});
-                    if (nz && nz->GetState() == Chunk::State::UPLOADED)
+                    }
+                    if (nz && nz->GetState() == Chunk::State::UPLOADED) {
+                        nz->SetState(Chunk::State::GENERATED);
                         m_requests.push({Req::Type::MESH, nz->GetPos()});
-                    if (px && px->GetState() == Chunk::State::UPLOADED)
+                    }
+                    if (px && px->GetState() == Chunk::State::UPLOADED) {
+                        px->SetState(Chunk::State::GENERATED);
                         m_requests.push({Req::Type::MESH, px->GetPos()});
-                    if (nx && nx->GetState() == Chunk::State::UPLOADED)
+                    }
+                    if (nx && nx->GetState() == Chunk::State::UPLOADED) {
+                        nx->SetState(Chunk::State::GENERATED);
                         m_requests.push({Req::Type::MESH, nx->GetPos()});
+                    }
                 }
             } else if (r.type == Req::Type::MESH) {
                 if (!c) continue;
