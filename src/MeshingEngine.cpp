@@ -44,8 +44,8 @@ void MeshingEngine::worker() {
                 c  = get_chunk(r.pos);
                 pz = get_chunk(r.pos + glm::ivec3{0, 0, 1});
                 nz = get_chunk(r.pos + glm::ivec3{0, 0, -1});
-                //py = get_chunk(r.pos + glm::ivec3{0, 1, 0});
-                //ny = get_chunk(r.pos + glm::ivec3{0, -1, 0});
+                py = get_chunk(r.pos + glm::ivec3{0, 1, 0});
+                ny = get_chunk(r.pos + glm::ivec3{0, -1, 0});
                 px = get_chunk(r.pos + glm::ivec3{1, 0, 0});
                 nx = get_chunk(r.pos + glm::ivec3{-1, 0, 0});
             }
@@ -77,15 +77,30 @@ void MeshingEngine::worker() {
                         nx->SetState(Chunk::State::GENERATED);
                         m_requests.push({Req::Type::MESH, nx->GetPos()});
                     }
+
+                    if (ny && ny->GetState() == Chunk::State::UPLOADED) {
+                        ny->SetState(Chunk::State::GENERATED);
+                        m_requests.push({Req::Type::MESH, ny->GetPos()});
+                    }
+
+                    if (py && py->GetState() == Chunk::State::UPLOADED) {
+                        py->SetState(Chunk::State::GENERATED);
+                        m_requests.push({Req::Type::MESH, py->GetPos()});
+                    }
+
                 }
             } else if (r.type == Req::Type::MESH) {
                 if (!c) continue;
-                assert(c->GetState() == Chunk::State::GENERATED || c->GetState() == Chunk::State::UPLOADED);
+                if(c->GetState() != Chunk::State::GENERATED && c->GetState() != Chunk::State::UPLOADED) {
+                    continue;
+                }
 
                 if ((pz && pz->GetState() == Chunk::State::UNLOADED) ||
                     (nz && nz->GetState() == Chunk::State::UNLOADED) ||
                     (px && px->GetState() == Chunk::State::UNLOADED) ||
-                    (nx && nx->GetState() == Chunk::State::UNLOADED)) 
+                    (nx && nx->GetState() == Chunk::State::UNLOADED) ||
+                    (ny && ny->GetState() == Chunk::State::UNLOADED) ||
+                    (py && py->GetState() == Chunk::State::UNLOADED)) 
                 {
                     {
                         std::lock_guard lock(m_requests_mutex);
@@ -118,10 +133,10 @@ void MeshingEngine::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
         const glm::ivec3 &coord = it->first;
 
         const int dx = coord.x - cam_chunk.x;
-        /*int dy = coord.y - cam_chunk.y;*/
+        int dy = coord.y - cam_chunk.y;
         const int dz = coord.z - cam_chunk.z;
 
-        if (std::abs(dx) > RAD || std::abs(dz) > RAD) {
+        if (std::abs(dx) > RAD || std::abs(dz) > RAD || std::abs(dy) > RAD) {
             auto chunk = it->second;
             if (chunk->GetState() == Chunk::State::BUILDING) {
                 continue;
@@ -130,7 +145,7 @@ void MeshingEngine::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
             glm::ivec3 pos = it->first;
             it = m_chunks.erase(it);
 
-            glm::ivec3 offsets[4] = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
+            glm::ivec3 offsets[6] = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}, {0,1,0}, {0,-1,0}};
             for (auto& offset : offsets) {
                 glm::ivec3 neighbor = pos + offset;
                 auto n_it = m_chunks.find(neighbor);
