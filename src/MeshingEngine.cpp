@@ -1,6 +1,8 @@
 #include "MeshingEngine.hpp"
 #include <thread>
 
+#include "Camera.hpp"
+
 void MeshingEngine::Request(glm::ivec3 pos) {
     {
         std::lock_guard chunks_lock(m_chunks_mutex);
@@ -52,7 +54,8 @@ void MeshingEngine::worker() {
 
             if (r.type == Req::Type::TERRAIN) {
                 if (!c) continue;
-                assert(c->GetState() == Chunk::State::UNLOADED);
+                //assert(c->GetState() == Chunk::State::UNLOADED);
+                if (c->GetState() != Chunk::State::UNLOADED) continue;
                 c->GenTerrain();
                 c->SetState(Chunk::State::GENERATED);
 
@@ -124,7 +127,7 @@ void MeshingEngine::worker() {
     }
 }
 
-static constexpr int RAD = 16;
+static constexpr int RAD = 8;
 
 void MeshingEngine::UnloadFarChunks(const glm::ivec3 &cam_chunk) {
     std::lock_guard lock(m_chunks_mutex);
@@ -386,4 +389,56 @@ void MeshingEngine::Upload() {
         chunk->Upload();
         chunk->SetState(Chunk::State::UPLOADED);
     }
+}
+
+bool MeshingEngine::CheckCollision(glm::vec3 pos, glm::vec3 size) {
+    const auto minAABB = pos - glm::vec3{size.x / 2.f, 0, size.z / 2.f};
+    const auto maxAABB = pos + glm::vec3{size.x / 2.f, size.y, size.z / 2.f};
+
+    const int minX = static_cast<int>(std::floor(minAABB.x));
+    const int maxX = static_cast<int>(std::floor(maxAABB.x));
+    const int minY = static_cast<int>(std::floor(minAABB.y));
+    const int maxY = static_cast<int>(std::floor(maxAABB.y));
+    const int minZ = static_cast<int>(std::floor(minAABB.z));
+    const int maxZ = static_cast<int>(std::floor(maxAABB.z));
+
+    for (int x = minX; x <= maxX; ++x) {
+        for (int y = minY; y <= maxY; ++y) {
+            for (int z = minZ; z <= maxZ; ++z) {
+                if (get_block(glm::vec3(x, y, z)) != Chunk::Block::AIR) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+Chunk::Block MeshingEngine::get_block(glm::vec3 pos) {
+    std::shared_ptr<Chunk> chunk;
+    {
+        std::lock_guard lock(m_chunks_mutex);
+        chunk = get_chunk(glm::ivec3{
+            static_cast<int>(std::floor(pos.x / CHUNK_WIDTH)),
+            static_cast<int>(std::floor(pos.y / CHUNK_HEIGHT)),
+            static_cast<int>(std::floor(pos.z / CHUNK_DEPTH))
+        });
+    }
+
+    if (!chunk || chunk->GetState() == Chunk::State::UNLOADED) {
+        return Chunk::Block::AIR;
+    }
+
+    glm::ivec3 local = {
+        static_cast<int>(std::floor(pos.x)) % CHUNK_WIDTH,
+        static_cast<int>(std::floor(pos.y)) % CHUNK_HEIGHT,
+        static_cast<int>(std::floor(pos.z)) % CHUNK_DEPTH
+    };
+
+    if (local.x < 0) local.x += CHUNK_WIDTH;
+    if (local.y < 0) local.y += CHUNK_HEIGHT;
+    if (local.z < 0) local.z += CHUNK_DEPTH;
+
+    return chunk->GetBlock(local);
 }

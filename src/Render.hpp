@@ -16,11 +16,9 @@ class Render {
 public:
     Render();
     void Draw();
-    void UpdateCamera(GLFWwindow *window) { m_camera->CalculateView(window); };
-    bool ChunkExists(glm::ivec3 pos);
-    std::shared_ptr<Chunk> GetChunk(glm::ivec3 pos);
+    void UpdateCamera(GLFWwindow *window) const { m_camera->CalculateView(window, m_mesher); };
 
-    static constexpr int RADIUS = 16;
+    static constexpr int RADIUS = 8;
 private:
     std::shared_ptr<Shader> m_shader;
     std::shared_ptr<Camera> m_camera;
@@ -28,7 +26,7 @@ private:
 
     std::mutex m_chunks_mutex;
 
-    std::unique_ptr<MeshingEngine> m_mesher;
+    std::shared_ptr<MeshingEngine> m_mesher;
 };
 
 

@@ -63,37 +63,43 @@ void Chunk::Place(const glm::ivec3 &pos, const Block type) {
 }
 
 void Chunk::GenTerrain() {
-    constexpr int baseHeight = 7;
-    constexpr double amplitude = 10.0;
-    constexpr double frequency = 0.035;
+    constexpr double frequency = 0.015;
+    constexpr int maxTerrainHeight = 64;
 
     static const siv::PerlinNoise perlin{12345u};
 
-    for (int x = 0; x < CHUNK_WIDTH; ++x) {
-        for (int z = 0; z < CHUNK_DEPTH; ++z) {
+    int chunkBaseY = m_pos.y * CHUNK_HEIGHT;
+    if (chunkBaseY > maxTerrainHeight) {
+        return;
+    }
+
+    std::array<int, CHUNK_WIDTH * CHUNK_DEPTH> surfaceHeights;
+
+    for (int z = 0; z < CHUNK_DEPTH; ++z) {
+        for (int x = 0; x < CHUNK_WIDTH; ++x) {
             int worldX = x + m_pos.x * CHUNK_WIDTH;
             int worldZ = z + m_pos.z * CHUNK_DEPTH;
 
-            double noise = perlin.octave2D_01(
-                worldX * frequency,
-                worldZ * frequency,
-                4
-            );
+            double noise = perlin.octave2D_01(worldX * frequency, worldZ * frequency, 4);
+            surfaceHeights[x + z * CHUNK_WIDTH] = static_cast<int>(noise * maxTerrainHeight);
+        }
+    }
 
-            int terrainHeight =
-                baseHeight + static_cast<int>(noise * amplitude);
+    for (int y = 0; y < CHUNK_HEIGHT; ++y) {
+        int worldY = y + chunkBaseY;
 
-            for (int y = 0; y < CHUNK_HEIGHT; ++y) {
+        for (int z = 0; z < CHUNK_DEPTH; ++z) {
+            for (int x = 0; x < CHUNK_WIDTH; ++x) {
+                
+                int surfaceHeight = surfaceHeights[x + z * CHUNK_WIDTH];
                 Block block = Block::AIR;
 
-                if (y == 0) {
-                    block = Block::STONE;
-                } else if (y < terrainHeight - 3) {
-                    block = Block::STONE;
-                } else if (y < terrainHeight) {
-                    block = Block::DIRT;
-                } else if (y == terrainHeight) {
+                if (worldY == surfaceHeight) {
                     block = Block::GRASS;
+                } else if (worldY >= surfaceHeight - 3 && worldY < surfaceHeight) {
+                    block = Block::DIRT;
+                } else if (worldY < surfaceHeight - 3) {
+                    block = Block::STONE;
                 }
 
                 m_blocks[Index(x, y, z)] = block;

@@ -30,6 +30,7 @@ public:
     void UnloadFarChunks(const glm::ivec3 &cam_chunk);
     void Draw(std::shared_ptr<Shader> shader, std::shared_ptr<Camera> camera);
     void Upload();
+    bool CheckCollision(glm::vec3 pos, glm::vec3 size);
 
 private:
     struct Req {
@@ -54,7 +55,7 @@ private:
     void build_mesh(std::shared_ptr<Chunk> chunk);
     std::shared_ptr<Chunk> get_chunk(glm::ivec3 pos);
 
-    Chunk::Block GetBlock(glm::ivec3 pos);
+    Chunk::Block get_block(glm::vec3 pos);
 };
 
 #endif

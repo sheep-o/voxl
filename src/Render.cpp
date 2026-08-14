@@ -18,9 +18,9 @@ Render::Render() {
         "../../src/vertex.glsl",
         "../../src/fragment.glsl"
     );
-    m_camera = std::make_shared<Camera>(60, glm::vec3{0, 10, 0}, glm::vec3{0, 0, -1});
+    m_camera = std::make_shared<Camera>(60, glm::vec3{0, 150, 0}, glm::vec3{0, 0, -1});
     m_last_pos = m_camera->GetPos();
-    m_mesher = std::make_unique<MeshingEngine>(8, this);
+    m_mesher = std::make_shared<MeshingEngine>(8, this);
 
     GLuint texture;
     glGenTextures(1, &texture);
@@ -45,7 +45,7 @@ Render::Render() {
     int y = std::floor(m_camera->GetPos().y) / CHUNK_HEIGHT;
     for (int i = x - RADIUS; i <= x + RADIUS; i++) {
         for (int j = z - RADIUS; j <= z + RADIUS; j++) {
-            for (int k = y - 4; k <= y + 4; k++) {
+            for (int k = y - 2; k <= y + 2; k++) {
                 m_mesher->Request(glm::ivec3{i, k, j});
             }
         }
@@ -55,13 +55,13 @@ Render::Render() {
 void Render::Draw() {
     m_shader->Use();
 
-    int lx = std::floor(m_last_pos.x) / CHUNK_WIDTH;
-    int ly = std::floor(m_last_pos.y) / CHUNK_HEIGHT;
-    int lz = std::floor(m_last_pos.z) / CHUNK_DEPTH;
-    
-    int x = std::floor(m_camera->GetPos().x) / CHUNK_WIDTH;
-    int y = std::floor(m_camera->GetPos().y) / CHUNK_HEIGHT;
-    int z = std::floor(m_camera->GetPos().z) / CHUNK_DEPTH;
+    int lx = static_cast<int>(std::floor(m_last_pos.x / CHUNK_WIDTH));
+    int ly = static_cast<int>(std::floor(m_last_pos.y / CHUNK_HEIGHT));
+    int lz = static_cast<int>(std::floor(m_last_pos.z / CHUNK_DEPTH));
+
+    int x = static_cast<int>(std::floor(m_camera->GetPos().x / CHUNK_WIDTH));
+    int y = static_cast<int>(std::floor(m_camera->GetPos().y / CHUNK_HEIGHT));
+    int z = static_cast<int>(std::floor(m_camera->GetPos().z / CHUNK_DEPTH));
 
     m_mesher->Upload();
 
@@ -74,7 +74,7 @@ void Render::Draw() {
 
         if (dx != 0) {
             int target_x = (dx > 0) ? (x + RADIUS) : (x - RADIUS);
-            for (int k = y - RADIUS; k <= y + RADIUS; k++) {
+            for (int k = y - 2; k <= y + 2; k++) {
                 for (int j = z - RADIUS; j <= z + RADIUS; j++) {
                     m_mesher->Request(glm::ivec3{target_x, k, j});
                 }
@@ -82,7 +82,7 @@ void Render::Draw() {
         }
 
         if (dy != 0) {
-            int target_y = (dy > 0) ? (y + RADIUS) : (y - RADIUS);
+            int target_y = (dy > 0) ? (y + 2) : (y - 2);
             for (int i = x - RADIUS; i <= x + RADIUS; i++) {
                 for (int j = z - RADIUS; j <= z + RADIUS; j++) {
                     m_mesher->Request(glm::ivec3{i, target_y, j});
@@ -93,7 +93,7 @@ void Render::Draw() {
         if (dz != 0) {
             int target_z = (dz > 0) ? (z + RADIUS) : (z - RADIUS);
             for (int i = x - RADIUS; i <= x + RADIUS; i++) {
-                for (int k = y - RADIUS; k <= y + RADIUS; k++) {
+                for (int k = y - 2; k <= y + 2; k++) {
                     m_mesher->Request(glm::ivec3{i, k, target_z});
                 }
             }

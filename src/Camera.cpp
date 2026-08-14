@@ -2,23 +2,45 @@
 #include <GLFW/glfw3.h>
 #include <cstdio>
 
-void Camera::CalculateView(GLFWwindow *window) {
+#include "MeshingEngine.hpp"
+
+void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> mesher) {
     float curr_time = static_cast<float>(glfwGetTime());
     float delta_time = curr_time - m_prev_time;
     m_prev_time = curr_time;
 
     glm::vec3 delta{};
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) m_pos += m_front*m_speed*delta_time;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) m_pos -= m_front*m_speed*delta_time;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) m_pos -= glm::normalize(glm::cross(m_front, m_up))*m_speed*delta_time;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) m_pos += glm::normalize(glm::cross(m_front, m_up))*m_speed*delta_time;
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) m_pos += m_up*m_speed*delta_time;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) m_pos -= m_up*m_speed*delta_time;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) delta += m_front*m_speed*delta_time;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) delta -= m_front*m_speed*delta_time;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) delta -= glm::normalize(glm::cross(m_front, m_up))*m_speed*delta_time;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) delta += glm::normalize(glm::cross(m_front, m_up))*m_speed*delta_time;
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) delta += m_up*m_speed*delta_time;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) delta -= m_up*m_speed*delta_time;
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
-    //printf("Pos: %f, %f, %f\n", m_pos.x, m_pos.y, m_pos.z); 
-    
+    //printf("Pos: %f, %f, %f\n", m_pos.x, m_pos.y, m_pos.z);
+
+    m_pos.x += delta.x;
+    if (mesher->CheckCollision(m_pos, m_size)) {
+        if (delta.x > 0) m_pos.x = std::floor(m_pos.x + m_size.x / 2.0f) - m_size.x / 2.0f - 0.001f;
+        if (delta.x < 0) m_pos.x = std::ceil(m_pos.x - m_size.x / 2.0f) + m_size.x / 2.0f + 0.001f;
+    }
+
+    m_pos.y += delta.y;
+    if (mesher->CheckCollision(m_pos, m_size)) {
+        if (delta.y > 0) m_pos.y = std::floor(m_pos.y + m_size.y) - m_size.y - 0.001f; // Hit ceiling
+        if (delta.y < 0) {
+            m_pos.y = std::ceil(m_pos.y) + 0.001f; // Hit floor
+        }
+    }
+
+    m_pos.z += delta.z;
+    if (mesher->CheckCollision(m_pos, m_size)) {
+        if (delta.z > 0) m_pos.z = std::floor(m_pos.z + m_size.z / 2.0f) - m_size.z / 2.0f - 0.001f;
+        if (delta.z < 0) m_pos.z = std::ceil(m_pos.z - m_size.z / 2.0f) + m_size.z / 2.0f + 0.001f;
+    }
+
     double x, y;
     glfwGetCursorPos(window, &x, &y);
     glm::vec2 cursor{x, y};
@@ -41,7 +63,8 @@ void Camera::CalculateView(GLFWwindow *window) {
         m_front = glm::normalize(direction);
     }
 
-    m_view = glm::lookAt(m_pos, m_pos + m_front, m_up);
+    m_eye = m_pos + glm::vec3{0, m_size.y, 0};
+    m_view = glm::lookAt(m_eye, m_eye + m_front, m_up);
     m_prev_cur = cursor;
 }
 
