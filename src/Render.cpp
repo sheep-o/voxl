@@ -15,10 +15,34 @@ Render::Render() {
     glEnable(GL_DEPTH_TEST);
 
     m_shader = std::make_shared<Shader>(
-        "../../src/vertex.glsl",
-        "../../src/fragment.glsl"
+        "../../../src/vertex.glsl",
+        "../../../src/fragment.glsl"
     );
-    m_camera = std::make_shared<Camera>(60, glm::vec3{0, 150, 0}, glm::vec3{0, 0, -1});
+
+    m_ui_shader = std::make_shared<Shader>(
+        "../../../src/ui_vertex.glsl",
+        "../../../src/ui_fragment.glsl"
+    );
+
+    m_ui_shader->Use();
+    float crosshairVerts[] = {
+        -0.02f,  0.00f,  // Left
+         0.02f,  0.00f,  // Right
+         0.00f, -0.035f, // Bottom
+         0.00f,  0.035f  // Top
+    };
+
+    glGenVertexArrays(1, &m_crosshair_vao);
+    glGenBuffers(1, &m_crosshair_vbo);
+
+    glBindVertexArray(m_crosshair_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_crosshair_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(crosshairVerts), crosshairVerts, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    m_camera = std::make_shared<Camera>(60, glm::vec3{0, 100, 0}, glm::vec3{0, 0, -1});
     m_last_pos = m_camera->GetPos();
     m_mesher = std::make_shared<MeshingEngine>(8, this);
 
@@ -30,7 +54,7 @@ Render::Render() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     int width, height, channels;
-    unsigned char *data = stbi_load("../../src/atlas.jpg", &width, &height, &channels, 0);
+    unsigned char *data = stbi_load("../../../src/atlas.jpg", &width, &height, &channels, 0);
     if (data) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -54,6 +78,7 @@ Render::Render() {
 
 void Render::Draw() {
     m_shader->Use();
+    glEnable(GL_DEPTH_TEST);
 
     int lx = static_cast<int>(std::floor(m_last_pos.x / CHUNK_WIDTH));
     int ly = static_cast<int>(std::floor(m_last_pos.y / CHUNK_HEIGHT));
@@ -107,6 +132,12 @@ void Render::Draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     m_mesher->Draw(m_shader, m_camera);
+
+
+    m_ui_shader->Use();
+    glBindVertexArray(m_crosshair_vao);
+    glDisable(GL_DEPTH_TEST);
+    glDrawArrays(GL_LINES, 0, 4);
 
     m_last_pos = m_camera->GetPos();
 }

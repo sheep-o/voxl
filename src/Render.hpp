@@ -21,12 +21,15 @@ public:
     static constexpr int RADIUS = 8;
 private:
     std::shared_ptr<Shader> m_shader;
+    std::shared_ptr<Shader> m_ui_shader;
     std::shared_ptr<Camera> m_camera;
     glm::vec3 m_last_pos;
 
     std::mutex m_chunks_mutex;
 
     std::shared_ptr<MeshingEngine> m_mesher;
+
+    GLuint m_crosshair_vao, m_crosshair_vbo;
 };
 
 

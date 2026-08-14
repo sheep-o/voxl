@@ -4,6 +4,8 @@
 
 #include "MeshingEngine.hpp"
 
+bool press_m1 = false, press_m2 = false;
+
 void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> mesher) {
     float curr_time = static_cast<float>(glfwGetTime());
     float delta_time = curr_time - m_prev_time;
@@ -17,8 +19,43 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) delta += m_up*m_speed*delta_time;
     if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) delta -= m_up*m_speed*delta_time;
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (!press_m1) {
+            press_m1 = true;
+            if (glm::vec3 end,prev; mesher->Raycast(m_eye, m_front, end, prev)) {
+                mesher->SetBlock(end, Chunk::Block::AIR);
+                mesher->Request(glm::ivec3{
+                    static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
+                    static_cast<int>(std::floor(end.y / CHUNK_HEIGHT)),
+                    static_cast<int>(std::floor(end.z / CHUNK_DEPTH))
+                });
+            }
+        }
+    } else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE) {
+        press_m1 = false;
+    }
+
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS) {
+        if (!press_m2) {
+            press_m2 = true;
+            if (glm::vec3 end,prev; mesher->Raycast(m_eye, m_front, end, prev)) {
+                mesher->SetBlock(prev, Chunk::Block::STONE);
+                mesher->Request(glm::ivec3{
+                    static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
+                    static_cast<int>(std::floor(end.y / CHUNK_HEIGHT)),
+                    static_cast<int>(std::floor(end.z / CHUNK_DEPTH))
+                });
+            }
+        }
+    } else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE) {
+        press_m2 = false;
+    }
+
+            /*
+            auto mesher = static_cast<MeshingEngine *>(glfwGetWindowUserPointer(window));
+            */
+
     //printf("Pos: %f, %f, %f\n", m_pos.x, m_pos.y, m_pos.z);
 
     m_pos.x += delta.x;

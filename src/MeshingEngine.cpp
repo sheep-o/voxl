@@ -7,6 +7,14 @@ void MeshingEngine::Request(glm::ivec3 pos) {
     {
         std::lock_guard chunks_lock(m_chunks_mutex);
         if (m_chunks.find(pos) != m_chunks.end()) {
+            {
+                std::lock_guard requests_lock(m_requests_mutex);
+                m_chunks[pos]->SetState(Chunk::State::GENERATED);
+                m_requests.push({
+                    Req::Type::MESH, pos
+                });
+            }
+            m_requests_cv.notify_one();
             return;
         }
 
@@ -441,4 +449,94 @@ Chunk::Block MeshingEngine::get_block(glm::vec3 pos) {
     if (local.z < 0) local.z += CHUNK_DEPTH;
 
     return chunk->GetBlock(local);
+}
+
+void MeshingEngine::SetBlock(glm::vec3 pos, Chunk::Block block) {
+    std::shared_ptr<Chunk> chunk;
+    {
+        std::lock_guard lock(m_chunks_mutex);
+        chunk = get_chunk(glm::ivec3{
+            static_cast<int>(std::floor(pos.x / CHUNK_WIDTH)),
+            static_cast<int>(std::floor(pos.y / CHUNK_HEIGHT)),
+            static_cast<int>(std::floor(pos.z / CHUNK_DEPTH))
+        });
+    }
+
+    if (!chunk || chunk->GetState() == Chunk::State::UNLOADED) {
+        return;
+    }
+
+    glm::ivec3 local = {
+        static_cast<int>(std::floor(pos.x)) % CHUNK_WIDTH,
+        static_cast<int>(std::floor(pos.y)) % CHUNK_HEIGHT,
+        static_cast<int>(std::floor(pos.z)) % CHUNK_DEPTH
+    };
+
+    if (local.x < 0) local.x += CHUNK_WIDTH;
+    if (local.y < 0) local.y += CHUNK_HEIGHT;
+    if (local.z < 0) local.z += CHUNK_DEPTH;
+
+    chunk->Place(local, block);
+}
+
+
+bool MeshingEngine::Raycast(glm::vec3 start, glm::vec3 dir, glm::vec3 &end, glm::vec3 &prev) {
+    glm::ivec3 map_pos = glm::ivec3(std::floor(start.x), std::floor(start.y), std::floor(start.z));
+
+    glm::vec3 t_delta = glm::abs(1.0f / dir);
+
+    glm::ivec3 step;
+
+    glm::vec3 t_max;
+
+    for (int i = 0; i < 3; ++i) {
+        if (dir[i] > 0) {
+            step[i] = 1;
+            t_max[i] = (std::floor(start[i]) + 1.0f - start[i]) * t_delta[i];
+        } else if (dir[i] < 0) {
+            step[i] = -1;
+            t_max[i] = (start[i] - std::floor(start[i])) * t_delta[i];
+        } else {
+            step[i] = 0;
+            t_max[i] = std::numeric_limits<float>::infinity();
+        }
+    }
+
+    float dist = 0.0f;
+    static constexpr float max_dist = 10;
+
+    prev = map_pos;
+
+    while (dist < max_dist) {
+        if (get_block(glm::vec3(map_pos.x, map_pos.y, map_pos.z)) != Chunk::Block::AIR) {
+            end = map_pos;
+            return true;
+        }
+
+        prev = map_pos;
+
+        if (t_max.x < t_max.y) {
+            if (t_max.x < t_max.z) {
+                map_pos.x += step.x;
+                dist = t_max.x;
+                t_max.x += t_delta.x;
+            } else {
+                map_pos.z += step.z;
+                dist = t_max.z;
+                t_max.z += t_delta.z;
+            }
+        } else {
+            if (t_max.y < t_max.z) {
+                map_pos.y += step.y;
+                dist = t_max.y;
+                t_max.y += t_delta.y;
+            } else {
+                map_pos.z += step.z;
+                dist = t_max.z;
+                t_max.z += t_delta.z;
+            }
+        }
+    }
+
+    return false;
 }

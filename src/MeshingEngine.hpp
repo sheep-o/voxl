@@ -31,7 +31,8 @@ public:
     void Draw(std::shared_ptr<Shader> shader, std::shared_ptr<Camera> camera);
     void Upload();
     bool CheckCollision(glm::vec3 pos, glm::vec3 size);
-
+    void SetBlock(glm::vec3 pos, Chunk::Block block);
+    bool Raycast(glm::vec3 start, glm::vec3 dir, glm::vec3 &end, glm::vec3 &prev);
 private:
     struct Req {
         enum class Type {TERRAIN, MESH} type;
