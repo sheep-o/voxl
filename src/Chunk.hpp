@@ -18,7 +18,7 @@ class Chunk {
 public:
     enum class State {UNLOADED, GENERATED, BUILDING, BUILT, UPLOADED};
     enum class Block {AIR, STONE, DIRT, GRASS};
-    struct Vertex { GLfloat x, y, z, w, h; };
+    struct Vertex { GLfloat x, y, z, w, h, shade; };
 
     Chunk();
     explicit Chunk(glm::ivec3 pos);

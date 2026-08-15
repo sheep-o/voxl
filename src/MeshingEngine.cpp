@@ -274,10 +274,10 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
                 if (draw_PZ) {
                     const auto base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf,     yf,     zf + 1, du, 0});
-                    m_verts.push_back({xf + 1, yf,     zf + 1, t+du, 0});
-                    m_verts.push_back({xf + 1, yf + 1, zf + 1, t+du, t});
-                    m_verts.push_back({xf,     yf + 1, zf + 1, du, t});
+                    m_verts.push_back({xf,     yf,     zf + 1, du, 0, 0.8});
+                    m_verts.push_back({xf + 1, yf,     zf + 1, t+du, 0, 0.8});
+                    m_verts.push_back({xf + 1, yf + 1, zf + 1, t+du, t, 0.8});
+                    m_verts.push_back({xf,     yf + 1, zf + 1, du, t, 0.8});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -292,10 +292,10 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
                     
                     const auto base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf + 1, yf,     zf, du, 0});
-                    m_verts.push_back({xf,     yf,     zf, t+du, 0});
-                    m_verts.push_back({xf,     yf + 1, zf, t+du, t});
-                    m_verts.push_back({xf + 1, yf + 1, zf, du, t});
+                    m_verts.push_back({xf + 1, yf,     zf, du, 0, 0.8});
+                    m_verts.push_back({xf,     yf,     zf, t+du, 0, 0.8});
+                    m_verts.push_back({xf,     yf + 1, zf, t+du, t, 0.8});
+                    m_verts.push_back({xf + 1, yf + 1, zf, du, t, 0.8});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -310,15 +310,15 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
                     const auto base = static_cast<GLuint>(m_verts.size());
 
                     if (b == Chunk::Block::GRASS) {
-                        m_verts.push_back({xf,     yf + 1, zf + 1, 0, 0.5f});
-                        m_verts.push_back({xf + 1, yf + 1, zf + 1, 0.5f, 0.5f});
-                        m_verts.push_back({xf + 1, yf + 1, zf,     0.5f, 1.f});
-                        m_verts.push_back({xf,     yf + 1, zf,     0, 1.f});
+                        m_verts.push_back({xf,     yf + 1, zf + 1, 0, 0.5f, 1});
+                        m_verts.push_back({xf + 1, yf + 1, zf + 1, 0.5f, 0.5f, 1});
+                        m_verts.push_back({xf + 1, yf + 1, zf,     0.5f, 1.f, 1});
+                        m_verts.push_back({xf,     yf + 1, zf,     0, 1.f, 1});
                     } else {
-                        m_verts.push_back({xf,     yf + 1, zf + 1, du, 0});
-                        m_verts.push_back({xf + 1, yf + 1, zf + 1, t+du, 0});
-                        m_verts.push_back({xf + 1, yf + 1, zf,     t+du, t});
-                        m_verts.push_back({xf,     yf + 1, zf,     du, t});
+                        m_verts.push_back({xf,     yf + 1, zf + 1, du, 0, 1});
+                        m_verts.push_back({xf + 1, yf + 1, zf + 1, t+du, 0, 1});
+                        m_verts.push_back({xf + 1, yf + 1, zf,     t+du, t, 1});
+                        m_verts.push_back({xf,     yf + 1, zf,     du, t, 1});
                     }
 
                     m_indices.push_back(base + 0);
@@ -333,10 +333,10 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
                 if (draw_NY) {
                     const auto base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf,     yf, zf,     du, 0});
-                    m_verts.push_back({xf + 1, yf, zf,     t+du, 0});
-                    m_verts.push_back({xf + 1, yf, zf + 1, t+du, t});
-                    m_verts.push_back({xf,     yf, zf + 1, du, t});
+                    m_verts.push_back({xf,     yf, zf,     du, 0, 0.4});
+                    m_verts.push_back({xf + 1, yf, zf,     t+du, 0, 0.4});
+                    m_verts.push_back({xf + 1, yf, zf + 1, t+du, t, 0.4});
+                    m_verts.push_back({xf,     yf, zf + 1, du, t, 0.4});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -350,10 +350,10 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
                 if (draw_PX) {
                     const auto base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf + 1, yf,     zf + 1, du, 0});
-                    m_verts.push_back({xf + 1, yf,     zf,     t+du, 0});
-                    m_verts.push_back({xf + 1, yf + 1, zf,     t+du, t});
-                    m_verts.push_back({xf + 1, yf + 1, zf + 1, du, t});
+                    m_verts.push_back({xf + 1, yf,     zf + 1, du, 0, 0.6});
+                    m_verts.push_back({xf + 1, yf,     zf,     t+du, 0, 0.6});
+                    m_verts.push_back({xf + 1, yf + 1, zf,     t+du, t, 0.6});
+                    m_verts.push_back({xf + 1, yf + 1, zf + 1, du, t, 0.6});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);
@@ -367,10 +367,10 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
                 if (draw_NX) {
                     const auto base = static_cast<GLuint>(m_verts.size());
 
-                    m_verts.push_back({xf, yf,     zf,     du, 0});
-                    m_verts.push_back({xf, yf,     zf + 1, t+du, 0});
-                    m_verts.push_back({xf, yf + 1, zf + 1, t+du, t});
-                    m_verts.push_back({xf, yf + 1, zf,     du, t});
+                    m_verts.push_back({xf, yf,     zf,     du, 0, 0.6});
+                    m_verts.push_back({xf, yf,     zf + 1, t+du, 0, 0.6});
+                    m_verts.push_back({xf, yf + 1, zf + 1, t+du, t, 0.6});
+                    m_verts.push_back({xf, yf + 1, zf,     du, t, 0.6});
 
                     m_indices.push_back(base + 0);
                     m_indices.push_back(base + 1);

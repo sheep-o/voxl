@@ -22,6 +22,7 @@ public:
 private:
     std::shared_ptr<Shader> m_shader;
     std::shared_ptr<Shader> m_ui_shader;
+    std::shared_ptr<Shader> m_sky_shader;
     std::shared_ptr<Camera> m_camera;
     glm::vec3 m_last_pos;
 
@@ -30,6 +31,10 @@ private:
     std::shared_ptr<MeshingEngine> m_mesher;
 
     GLuint m_crosshair_vao, m_crosshair_vbo;
+    GLuint m_skybox_vao, m_skybox_vbo;
+    GLuint m_cubemap;
+
+    unsigned int load_cubemap(std::vector<std::string> faces);
 };
 
 
