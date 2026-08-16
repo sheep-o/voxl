@@ -27,12 +27,16 @@ public:
     ~MeshingEngine() = default; // implement later to gracefully stop threads
 
     void Request(glm::ivec3 pos);
+    //void Request(std::shared_ptr<Chunk> chunk);
     void UnloadFarChunks(const glm::ivec3 &cam_chunk);
     void Draw(std::shared_ptr<Shader> shader, std::shared_ptr<Camera> camera);
     void Upload();
     bool CheckCollision(glm::vec3 pos, glm::vec3 size);
     void SetBlock(glm::vec3 pos, Chunk::Block block);
     bool Raycast(glm::vec3 start, glm::vec3 dir, glm::vec3 &end, glm::vec3 &prev);
+    void Tick();
+    void MakeActive(glm::ivec3 pos);
+    void RemoveActive(glm::ivec3 pos);
 private:
     struct Req {
         enum class Type {TERRAIN, MESH} type;
@@ -43,6 +47,8 @@ private:
     ChunkMap m_chunks;
     std::mutex m_chunks_mutex;
     Render *m_render;
+    BlockSet m_active_blocks;
+    std::mutex m_active_blocks_mutex;
 
     std::queue<Req> m_requests;
     std::mutex m_requests_mutex;

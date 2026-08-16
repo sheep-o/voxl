@@ -11,6 +11,16 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
     float delta_time = curr_time - m_prev_time;
     m_prev_time = curr_time;
 
+    static constexpr int TPS = 5;
+    static constexpr float SPT = 1.f / TPS;
+    static float acc = 0;
+    acc += delta_time;
+    if (acc >= SPT) {
+        acc -= SPT;
+        mesher->Tick();
+    }
+
+
     glm::vec3 delta{};
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) delta += m_front*m_speed*delta_time;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) delta -= m_front*m_speed*delta_time;
@@ -25,6 +35,7 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
             press_m1 = true;
             if (glm::vec3 end,prev; mesher->Raycast(m_eye, m_front, end, prev)) {
                 mesher->SetBlock(end, Chunk::Block::AIR);
+                mesher->RemoveActive(prev);
                 mesher->Request(glm::ivec3{
                     static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
                     static_cast<int>(std::floor(end.y / CHUNK_HEIGHT)),
@@ -41,6 +52,7 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
             press_m2 = true;
             if (glm::vec3 end,prev; mesher->Raycast(m_eye, m_front, end, prev)) {
                 mesher->SetBlock(prev, Chunk::Block::STONE);
+                mesher->MakeActive(prev);
                 mesher->Request(glm::ivec3{
                     static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
                     static_cast<int>(std::floor(end.y / CHUNK_HEIGHT)),

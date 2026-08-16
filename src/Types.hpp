@@ -5,6 +5,7 @@
 #include <queue>
 #include <glm/glm.hpp>
 #include <memory>
+#include <unordered_set>
 #include "Chunk.hpp"
 
 struct ivec3Hash {
@@ -21,7 +22,8 @@ using ChunkMap
     = std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>, ivec3Hash>;
 using ChunkQueue
     = std::queue<std::shared_ptr<Chunk>>;
-
+using BlockSet
+    = std::unordered_set<glm::ivec3, ivec3Hash>;
 
 
 #endif

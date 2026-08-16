@@ -198,11 +198,8 @@ std::shared_ptr<Chunk> MeshingEngine::get_chunk(glm::ivec3 pos) {
 }
 
 void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
-    auto &m_verts = chunk->GetVerts();
-    auto &m_indices = chunk->GetIndices();
-
-    m_verts.clear();
-    m_indices.clear();
+    std::vector<Chunk::Vertex> m_verts;
+    std::vector<GLuint> m_indices;
 
     std::shared_ptr<Chunk> pz, nz, py, ny, px ,nx;
 
@@ -382,6 +379,9 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
             }
         }
     }
+
+    chunk->GetVerts() = std::move(m_verts);
+    chunk->GetIndices() = std::move(m_indices);
 }
 
 void MeshingEngine::Upload() {
@@ -391,9 +391,11 @@ void MeshingEngine::Upload() {
     while (!m_results.empty() && i++ < UPLOADS_PER_FRAME) {
         std::shared_ptr<Chunk> chunk = m_results.front();
         assert(chunk);
-        assert(chunk->GetState() == Chunk::State::BUILT);
-
         m_results.pop();
+        if (chunk->GetState() != Chunk::State::BUILT) {
+            continue;
+        }
+
         chunk->Upload();
         chunk->SetState(Chunk::State::UPLOADED);
     }
@@ -539,4 +541,37 @@ bool MeshingEngine::Raycast(glm::vec3 start, glm::vec3 dir, glm::vec3 &end, glm:
     }
 
     return false;
+}
+
+void MeshingEngine::MakeActive(glm::ivec3 pos) {
+    std::lock_guard lock(m_active_blocks_mutex);
+    m_active_blocks.insert(pos);
+}
+
+void MeshingEngine::RemoveActive(glm::ivec3 pos) {
+    std::lock_guard lock(m_active_blocks_mutex);
+    if (auto it = m_active_blocks.find(pos); it != m_active_blocks.end()) {
+        m_active_blocks.erase(it);
+    }
+}
+
+void MeshingEngine::Tick() {
+    std::lock_guard lock(m_active_blocks_mutex);
+
+    std::unordered_set<glm::ivec3, ivec3Hash> chunks_to_update;
+
+    for (const auto &pos : m_active_blocks) {
+        Chunk::Block block = get_block(pos);
+        Chunk::Block new_block = static_cast<Chunk::Block>((static_cast<int>(block) + 1) % 4);
+        SetBlock(pos, new_block);
+        chunks_to_update.insert(glm::ivec3{
+            static_cast<int>(std::floor(static_cast<float>(pos.x) / CHUNK_WIDTH)),
+            static_cast<int>(std::floor(static_cast<float>(pos.y) / CHUNK_HEIGHT)),
+            static_cast<int>(std::floor(static_cast<float>(pos.z) / CHUNK_DEPTH))
+        });
+    }
+
+    for (auto &chunk : chunks_to_update) {
+        Request(chunk);
+    }
 }
