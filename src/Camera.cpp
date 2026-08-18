@@ -34,7 +34,7 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
         if (!press_m1) {
             press_m1 = true;
             if (glm::vec3 end,prev; mesher->Raycast(m_eye, m_front, end, prev)) {
-                mesher->SetBlock(end, Chunk::Block::AIR);
+                mesher->SetBlock(end, {});
                 mesher->RemoveActive(prev);
                 mesher->Request(glm::ivec3{
                     static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
@@ -51,13 +51,23 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
         if (!press_m2) {
             press_m2 = true;
             if (glm::vec3 end,prev; mesher->Raycast(m_eye, m_front, end, prev)) {
-                mesher->SetBlock(prev, Chunk::Block::STONE);
-                mesher->MakeActive(prev);
-                mesher->Request(glm::ivec3{
-                    static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
-                    static_cast<int>(std::floor(end.y / CHUNK_HEIGHT)),
-                    static_cast<int>(std::floor(end.z / CHUNK_DEPTH))
-                });
+                Chunk::Block &target = mesher->get_block(end);
+                if (target.GetID() == Chunk::Block::ID::DRILL) {
+                    uint8_t count = target.GetState();
+                    if (count < 5) {
+                        target.SetState(count + 1);
+                    }
+                } else {
+                    Chunk::Block b;
+                    b.SetID(Chunk::Block::ID::DRILL);
+                    mesher->SetBlock(prev, b);
+                    mesher->MakeActive(prev);
+                    mesher->Request(glm::ivec3{
+                        static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
+                        static_cast<int>(std::floor(end.y / CHUNK_HEIGHT)),
+                        static_cast<int>(std::floor(end.z / CHUNK_DEPTH))
+                    });
+                }
             }
         }
     } else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE) {

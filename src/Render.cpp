@@ -112,7 +112,7 @@ Render::Render() {
     glEnableVertexAttribArray(0);
 
 
-    m_camera = std::make_shared<Camera>(60, glm::vec3{0, 100, 0}, glm::vec3{0, 0, -1});
+    m_camera = std::make_shared<Camera>(60, glm::vec3{0, 80, 0}, glm::vec3{0, 0, -1});
     m_last_pos = m_camera->GetPos();
     m_mesher = std::make_shared<MeshingEngine>(8, this);
 
@@ -124,9 +124,9 @@ Render::Render() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     int width, height, channels;
-    unsigned char *data = stbi_load("../../../src/atlas.jpg", &width, &height, &channels, 0);
+    unsigned char *data = stbi_load("../../../src/atlas.png", &width, &height, &channels, 0);
     if (data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     } else {
         std::cerr << "Failed to load texture" << std::endl;

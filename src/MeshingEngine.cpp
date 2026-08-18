@@ -219,47 +219,47 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
             for (int z = 0; z < CHUNK_DEPTH; z++) {
 
                 auto b = chunk->GetBlock(glm::ivec3{x, y, z});
-                if (b == Chunk::Block::AIR)
+                if (b.GetID() == Chunk::Block::ID::AIR)
                     continue;
 
                 float t = 0.5;
-                float du = (b == Chunk::Block::STONE) ? 0.5f : 0;
+                float du = (b.GetID() == Chunk::Block::ID::STONE) ? 0.5f : 0;
 
                 bool draw_PZ, draw_NZ, draw_PY, draw_NY, draw_PX, draw_NX;
                 if (z < CHUNK_DEPTH - 1) {
-                    draw_PZ = (chunk->GetBlock(glm::ivec3{x, y, z + 1}) == Chunk::Block::AIR);
+                    draw_PZ = (chunk->GetBlock(glm::ivec3{x, y, z + 1}).GetID() == Chunk::Block::ID::AIR);
                 } else {
-                    draw_PZ = !pz || pz->GetBlock(glm::ivec3{x, y, 0}) == Chunk::Block::AIR;
+                    draw_PZ = !pz || pz->GetBlock(glm::ivec3{x, y, 0}).GetID() == Chunk::Block::ID::AIR;
                 }
 
                 if (z > 0) {
-                    draw_NZ = (chunk->GetBlock(glm::ivec3{x, y, z - 1}) == Chunk::Block::AIR);
+                    draw_NZ = (chunk->GetBlock(glm::ivec3{x, y, z - 1}).GetID() == Chunk::Block::ID::AIR);
                 } else {
-                    draw_NZ = !nz || nz->GetBlock(glm::ivec3{x, y, CHUNK_DEPTH - 1}) == Chunk::Block::AIR;
+                    draw_NZ = !nz || nz->GetBlock(glm::ivec3{x, y, CHUNK_DEPTH - 1}).GetID() == Chunk::Block::ID::AIR;
                 }
 
                 if (y < CHUNK_HEIGHT - 1) {
-                    draw_PY = (chunk->GetBlock(glm::ivec3{x, y + 1, z}) == Chunk::Block::AIR);
+                    draw_PY = (chunk->GetBlock(glm::ivec3{x, y + 1, z}).GetID() == Chunk::Block::ID::AIR);
                 } else {
-                    draw_PY = !py || py->GetBlock(glm::ivec3{x, 0, z}) == Chunk::Block::AIR;
+                    draw_PY = !py || py->GetBlock(glm::ivec3{x, 0, z}).GetID() == Chunk::Block::ID::AIR;
                 }
 
                 if (y > 0) {
-                    draw_NY = (chunk->GetBlock(glm::ivec3{x, y - 1, z}) == Chunk::Block::AIR);
+                    draw_NY = (chunk->GetBlock(glm::ivec3{x, y - 1, z}).GetID() == Chunk::Block::ID::AIR);
                 } else {
-                    draw_NY = !ny || ny->GetBlock(glm::ivec3{x, CHUNK_HEIGHT - 1, z}) == Chunk::Block::AIR;
+                    draw_NY = !ny || ny->GetBlock(glm::ivec3{x, CHUNK_HEIGHT - 1, z}).GetID() == Chunk::Block::ID::AIR;
                 }
 
                 if (x < CHUNK_WIDTH - 1) {
-                    draw_PX = (chunk->GetBlock(glm::ivec3{x + 1, y, z}) == Chunk::Block::AIR);
+                    draw_PX = (chunk->GetBlock(glm::ivec3{x + 1, y, z}).GetID() == Chunk::Block::ID::AIR);
                 } else {
-                    draw_PX = !px || px->GetBlock(glm::ivec3{0, y, z}) == Chunk::Block::AIR;
+                    draw_PX = !px || px->GetBlock(glm::ivec3{0, y, z}).GetID() == Chunk::Block::ID::AIR;
                 }
 
                 if (x > 0) {
-                    draw_NX = (chunk->GetBlock(glm::ivec3{x - 1, y, z}) == Chunk::Block::AIR);
+                    draw_NX = (chunk->GetBlock(glm::ivec3{x - 1, y, z}).GetID() == Chunk::Block::ID::AIR);
                 } else {
-                    draw_NX = !nx || nx->GetBlock(glm::ivec3{CHUNK_WIDTH - 1, y, z}) == Chunk::Block::AIR;
+                    draw_NX = !nx || nx->GetBlock(glm::ivec3{CHUNK_WIDTH - 1, y, z}).GetID() == Chunk::Block::ID::AIR;
                 }
 
 
@@ -306,7 +306,7 @@ void MeshingEngine::build_mesh(std::shared_ptr<Chunk> chunk) {
                 if (draw_PY) {
                     const auto base = static_cast<GLuint>(m_verts.size());
 
-                    if (b == Chunk::Block::GRASS) {
+                    if (b.GetID() == Chunk::Block::ID::GRASS) {
                         m_verts.push_back({xf,     yf + 1, zf + 1, 0, 0.5f, 1});
                         m_verts.push_back({xf + 1, yf + 1, zf + 1, 0.5f, 0.5f, 1});
                         m_verts.push_back({xf + 1, yf + 1, zf,     0.5f, 1.f, 1});
@@ -415,7 +415,7 @@ bool MeshingEngine::CheckCollision(glm::vec3 pos, glm::vec3 size) {
     for (int x = minX; x <= maxX; ++x) {
         for (int y = minY; y <= maxY; ++y) {
             for (int z = minZ; z <= maxZ; ++z) {
-                if (get_block(glm::vec3(x, y, z)) != Chunk::Block::AIR) {
+                if (get_block(glm::vec3(x, y, z)).GetID() != Chunk::Block::ID::AIR) {
                     return true;
                 }
             }
@@ -425,7 +425,7 @@ bool MeshingEngine::CheckCollision(glm::vec3 pos, glm::vec3 size) {
     return false;
 }
 
-Chunk::Block MeshingEngine::get_block(glm::vec3 pos) {
+Chunk::Block &MeshingEngine::get_block(glm::vec3 pos) {
     std::shared_ptr<Chunk> chunk;
     {
         std::lock_guard lock(m_chunks_mutex);
@@ -437,7 +437,7 @@ Chunk::Block MeshingEngine::get_block(glm::vec3 pos) {
     }
 
     if (!chunk || chunk->GetState() == Chunk::State::UNLOADED) {
-        return Chunk::Block::AIR;
+        return Chunk::Block{};
     }
 
     glm::ivec3 local = {
@@ -510,7 +510,7 @@ bool MeshingEngine::Raycast(glm::vec3 start, glm::vec3 dir, glm::vec3 &end, glm:
     prev = map_pos;
 
     while (dist < max_dist) {
-        if (get_block(glm::vec3(map_pos.x, map_pos.y, map_pos.z)) != Chunk::Block::AIR) {
+        if (get_block(glm::vec3(map_pos.x, map_pos.y, map_pos.z)).GetID() != Chunk::Block::ID::AIR) {
             end = map_pos;
             return true;
         }
@@ -561,14 +561,21 @@ void MeshingEngine::Tick() {
     std::unordered_set<glm::ivec3, ivec3Hash> chunks_to_update;
 
     for (const auto &pos : m_active_blocks) {
-        Chunk::Block block = get_block(pos);
-        Chunk::Block new_block = static_cast<Chunk::Block>((static_cast<int>(block) + 1) % 4);
-        SetBlock(pos, new_block);
-        chunks_to_update.insert(glm::ivec3{
-            static_cast<int>(std::floor(static_cast<float>(pos.x) / CHUNK_WIDTH)),
-            static_cast<int>(std::floor(static_cast<float>(pos.y) / CHUNK_HEIGHT)),
-            static_cast<int>(std::floor(static_cast<float>(pos.z) / CHUNK_DEPTH))
-        });
+        Chunk::Block &block = get_block(pos);
+        if (block.GetID() == Chunk::Block::ID::DRILL) {
+            if (block.GetState() < 5) {
+                continue;
+            }
+
+            block.SetState(0);
+            glm::ivec3 target = pos + glm::ivec3{0, 0, 1};
+            SetBlock(target, {});
+            chunks_to_update.insert(glm::ivec3{
+                static_cast<int>(std::floor(static_cast<float>(target.x) / CHUNK_WIDTH)),
+                static_cast<int>(std::floor(static_cast<float>(target.y) / CHUNK_HEIGHT)),
+                static_cast<int>(std::floor(static_cast<float>(target.z) / CHUNK_DEPTH))
+            });
+        }
     }
 
     for (auto &chunk : chunks_to_update) {

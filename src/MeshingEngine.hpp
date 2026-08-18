@@ -37,6 +37,7 @@ public:
     void Tick();
     void MakeActive(glm::ivec3 pos);
     void RemoveActive(glm::ivec3 pos);
+    Chunk::Block &get_block(glm::vec3 pos);
 private:
     struct Req {
         enum class Type {TERRAIN, MESH} type;
@@ -61,8 +62,6 @@ private:
     void req_internal(glm::ivec3 pos);
     void build_mesh(std::shared_ptr<Chunk> chunk);
     std::shared_ptr<Chunk> get_chunk(glm::ivec3 pos);
-
-    Chunk::Block get_block(glm::vec3 pos);
 };
 
 #endif

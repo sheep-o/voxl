@@ -17,8 +17,38 @@ static constexpr int CHUNK_SIZE = CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH;
 class Chunk {
 public:
     enum class State {UNLOADED, GENERATED, BUILDING, BUILT, UPLOADED};
-    enum class Block {AIR, STONE, DIRT, GRASS};
     struct Vertex { GLfloat x, y, z, w, h, shade; };
+
+    struct Block {
+        enum class ID : uint8_t { AIR, STONE, DIRT, GRASS, DRILL };
+        enum class Dir : uint8_t { UP, DOWN, NORTH, SOUTH, EAST, WEST };
+        
+        uint16_t data = 0;
+
+        ID GetID() const {
+            return static_cast<ID>(data & 0xff);
+        }
+
+        Dir GetDir() const {
+            return static_cast<Dir>(data & 0b11100000000);
+        }
+
+        uint8_t GetState() const {
+            return static_cast<uint8_t>(data >> 11);
+        }
+
+        void SetID(ID id) {
+            data = (data & 0xff00) | static_cast<uint16_t>(id);
+        }
+
+        void SetDir(Dir dir) {
+            data = (data & 0b00011111111) | (static_cast<uint16_t>(dir) << 8);
+        }
+
+        void SetState(uint8_t state) {
+            data = (data & 0b11111111111) | (state << 11);
+        }
+    };
 
     Chunk();
     explicit Chunk(glm::ivec3 pos);
@@ -38,6 +68,8 @@ public:
     [[nodiscard]] glm::ivec3 GetPos() const { return m_pos; }
     [[nodiscard]] State GetState() const { return m_state.load(); }
     [[nodiscard]] bool IsUploaded() const { return m_uploaded; }
+
+    [[nodiscard]] Block &GetBlock(glm::ivec3 pos);
 
     // Remove soon
     std::vector<Vertex> &GetVerts() { return m_verts; }

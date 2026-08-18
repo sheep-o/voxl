@@ -9,7 +9,7 @@ Chunk::Chunk() {
     glGenBuffers(1, &m_vbo);
     glGenBuffers(1, &m_ebo);
 
-    m_blocks.fill(Block::AIR);
+    m_blocks.fill({});
 }
 
 Chunk::Chunk(const glm::ivec3 pos) {
@@ -18,7 +18,7 @@ Chunk::Chunk(const glm::ivec3 pos) {
     glGenBuffers(1, &m_vbo);
     glGenBuffers(1, &m_ebo);
 
-    m_blocks.fill(Block::AIR);
+    m_blocks.fill({});
 }
 
 Chunk::~Chunk() {
@@ -94,14 +94,14 @@ void Chunk::GenTerrain() {
             for (int x = 0; x < CHUNK_WIDTH; ++x) {
                 
                 int surfaceHeight = surfaceHeights[x + z * CHUNK_WIDTH];
-                Block block = Block::AIR;
+                Block block{};
 
                 if (worldY == surfaceHeight) {
-                    block = Block::GRASS;
+                    block.SetID(Block::ID::GRASS);
                 } else if (worldY >= surfaceHeight - 3 && worldY < surfaceHeight) {
-                    block = Block::DIRT;
+                    block.SetID(Block::ID::DIRT);
                 } else if (worldY < surfaceHeight - 3) {
-                    block = Block::STONE;
+                    block.SetID(Block::ID::STONE);
                 }
 
                 m_blocks[Index(x, y, z)] = block;
@@ -112,7 +112,7 @@ void Chunk::GenTerrain() {
     m_state = State::GENERATED;
 }
 
-Chunk::Block Chunk::GetBlock(const glm::ivec3 pos) const {
+Chunk::Block &Chunk::GetBlock(const glm::ivec3 pos) {
     assert(pos.x < CHUNK_WIDTH && pos.y < CHUNK_WIDTH && pos.z < CHUNK_WIDTH);
 
     return m_blocks[Index(pos.x, pos.y, pos.z)];
