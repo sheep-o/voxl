@@ -543,9 +543,15 @@ bool MeshingEngine::Raycast(glm::vec3 start, glm::vec3 dir, glm::vec3 &end, glm:
     return false;
 }
 
-void MeshingEngine::MakeActive(glm::ivec3 pos) {
+#include "actives/HandDrill.hpp"
+
+void MeshingEngine::MakeActive(glm::ivec3 pos, Chunk::Block::ID id) {
     std::lock_guard lock(m_active_blocks_mutex);
-    m_active_blocks.insert(pos);
+    if (id == Chunk::Block::ID::DRILL) {
+        auto drill = std::make_shared<HandDrill>();
+        m_active_blocks[pos] = drill;
+        drill->OnPlace(pos, this);
+    }
 }
 
 void MeshingEngine::RemoveActive(glm::ivec3 pos) {
@@ -555,11 +561,23 @@ void MeshingEngine::RemoveActive(glm::ivec3 pos) {
     }
 }
 
+std::shared_ptr<BlockEntity> MeshingEngine::GetActive(glm::ivec3 pos) {
+    if (auto it = m_active_blocks.find(pos); it != m_active_blocks.end()) {
+        return it->second;
+    }
+
+    return {};
+}
+
 void MeshingEngine::Tick() {
     std::lock_guard lock(m_active_blocks_mutex);
-
     std::unordered_set<glm::ivec3, ivec3Hash> chunks_to_update;
 
+    for (auto &[pos, block] : m_active_blocks) {
+        block->Tick(pos, this);
+    }
+
+    /*
     for (const auto &pos : m_active_blocks) {
         Chunk::Block &block = get_block(pos);
         if (block.GetID() == Chunk::Block::ID::DRILL) {
@@ -581,4 +599,5 @@ void MeshingEngine::Tick() {
     for (auto &chunk : chunks_to_update) {
         Request(chunk);
     }
+    */
 }

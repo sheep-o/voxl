@@ -35,8 +35,9 @@ public:
     void SetBlock(glm::vec3 pos, Chunk::Block block);
     bool Raycast(glm::vec3 start, glm::vec3 dir, glm::vec3 &end, glm::vec3 &prev);
     void Tick();
-    void MakeActive(glm::ivec3 pos);
+    void MakeActive(glm::ivec3 pos, Chunk::Block::ID id);
     void RemoveActive(glm::ivec3 pos);
+    std::shared_ptr<BlockEntity> GetActive(glm::ivec3 pos);
     Chunk::Block &get_block(glm::vec3 pos);
 private:
     struct Req {
@@ -48,7 +49,7 @@ private:
     ChunkMap m_chunks;
     std::mutex m_chunks_mutex;
     Render *m_render;
-    BlockSet m_active_blocks;
+    BlockMap m_active_blocks;
     std::mutex m_active_blocks_mutex;
 
     std::queue<Req> m_requests;

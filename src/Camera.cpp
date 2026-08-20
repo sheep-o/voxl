@@ -18,6 +18,7 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
     if (acc >= SPT) {
         acc -= SPT;
         mesher->Tick();
+        //printf("Pos: %f, %f, %f\n", m_pos.x, m_pos.y, m_pos.z);
     }
 
 
@@ -51,17 +52,14 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
         if (!press_m2) {
             press_m2 = true;
             if (glm::vec3 end,prev; mesher->Raycast(m_eye, m_front, end, prev)) {
-                Chunk::Block &target = mesher->get_block(end);
-                if (target.GetID() == Chunk::Block::ID::DRILL) {
-                    uint8_t count = target.GetState();
-                    if (count < 5) {
-                        target.SetState(count + 1);
-                    }
+                auto active = mesher->GetActive(end);
+                if (active) {
+                    active->OnInteract(end, mesher.get());
                 } else {
                     Chunk::Block b;
                     b.SetID(Chunk::Block::ID::DRILL);
                     mesher->SetBlock(prev, b);
-                    mesher->MakeActive(prev);
+                    mesher->MakeActive(prev, Chunk::Block::ID::DRILL);
                     mesher->Request(glm::ivec3{
                         static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
                         static_cast<int>(std::floor(end.y / CHUNK_HEIGHT)),
@@ -78,7 +76,6 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
             auto mesher = static_cast<MeshingEngine *>(glfwGetWindowUserPointer(window));
             */
 
-    //printf("Pos: %f, %f, %f\n", m_pos.x, m_pos.y, m_pos.z);
 
     m_pos.x += delta.x;
     if (mesher->CheckCollision(m_pos, m_size)) {

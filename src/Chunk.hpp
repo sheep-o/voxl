@@ -16,7 +16,7 @@ static constexpr int CHUNK_SIZE = CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH;
 
 class Chunk {
 public:
-    enum class State {UNLOADED, GENERATED, BUILDING, BUILT, UPLOADED};
+    enum class State { UNLOADED, GENERATED, BUILDING, BUILT, UPLOADED };
     struct Vertex { GLfloat x, y, z, w, h, shade; };
 
     struct Block {
@@ -30,7 +30,7 @@ public:
         }
 
         Dir GetDir() const {
-            return static_cast<Dir>(data & 0b11100000000);
+            return static_cast<Dir>((data >> 11) & 0b111);
         }
 
         uint8_t GetState() const {
@@ -42,7 +42,7 @@ public:
         }
 
         void SetDir(Dir dir) {
-            data = (data & 0b00011111111) | (static_cast<uint16_t>(dir) << 8);
+            data = (data & 0b1111100011111111) | (static_cast<uint16_t>(dir) << 8);
         }
 
         void SetState(uint8_t state) {

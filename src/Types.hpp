@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_set>
 #include "Chunk.hpp"
+#include "BlockEntity.hpp"
 
 struct ivec3Hash {
     std::size_t operator()(const glm::ivec3 &c) const {
@@ -24,6 +25,8 @@ using ChunkQueue
     = std::queue<std::shared_ptr<Chunk>>;
 using BlockSet
     = std::unordered_set<glm::ivec3, ivec3Hash>;
+using BlockMap
+    = std::unordered_map<glm::ivec3, std::shared_ptr<BlockEntity>, ivec3Hash>;
 
 
 #endif
