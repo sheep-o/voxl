@@ -6,6 +6,8 @@
 
 bool press_m1 = false, press_m2 = false;
 
+static Chunk::Block::ID id = Chunk::Block::ID::DRILL;
+
 void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> mesher) {
     float curr_time = static_cast<float>(glfwGetTime());
     float delta_time = curr_time - m_prev_time;
@@ -23,6 +25,8 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
 
 
     glm::vec3 delta{};
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) id = Chunk::Block::ID::DRILL;
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) id = Chunk::Block::ID::HOPPER;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) delta += m_front*m_speed*delta_time;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) delta -= m_front*m_speed*delta_time;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) delta -= glm::normalize(glm::cross(m_front, m_up))*m_speed*delta_time;
@@ -57,9 +61,9 @@ void Camera::CalculateView(GLFWwindow *window, std::shared_ptr<MeshingEngine> me
                     active->OnInteract(end, mesher.get());
                 } else {
                     Chunk::Block b;
-                    b.SetID(Chunk::Block::ID::DRILL);
+                    b.SetID(id);
                     mesher->SetBlock(prev, b);
-                    mesher->MakeActive(prev, Chunk::Block::ID::DRILL);
+                    mesher->MakeActive(prev, id);
                     mesher->Request(glm::ivec3{
                         static_cast<int>(std::floor(end.x / CHUNK_WIDTH)),
                         static_cast<int>(std::floor(end.y / CHUNK_HEIGHT)),

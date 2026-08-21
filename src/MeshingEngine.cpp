@@ -544,11 +544,16 @@ bool MeshingEngine::Raycast(glm::vec3 start, glm::vec3 dir, glm::vec3 &end, glm:
 }
 
 #include "actives/HandDrill.hpp"
+#include "actives/Hopper.hpp"
 
 void MeshingEngine::MakeActive(glm::ivec3 pos, Chunk::Block::ID id) {
     std::lock_guard lock(m_active_blocks_mutex);
     if (id == Chunk::Block::ID::DRILL) {
         auto drill = std::make_shared<HandDrill>();
+        m_active_blocks[pos] = drill;
+        drill->OnPlace(pos, this);
+    } else if (id == Chunk::Block::ID::HOPPER) {
+        auto drill = std::make_shared<Hopper>();
         m_active_blocks[pos] = drill;
         drill->OnPlace(pos, this);
     }

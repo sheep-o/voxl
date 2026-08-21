@@ -20,7 +20,7 @@ public:
     struct Vertex { GLfloat x, y, z, w, h, shade; };
 
     struct Block {
-        enum class ID : uint8_t { AIR, STONE, DIRT, GRASS, DRILL };
+        enum class ID : uint8_t { AIR, STONE, DIRT, GRASS, DRILL, HOPPER };
         enum class Dir : uint8_t { UP, DOWN, NORTH, SOUTH, EAST, WEST };
         
         uint16_t data = 0;

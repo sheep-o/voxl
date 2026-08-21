@@ -1,34 +1,29 @@
 #include "../BlockEntity.hpp"
 #include "../MeshingEngine.hpp"
-#include "../Items.hpp"
 
 class HandDrill : public BlockEntity {
 public:
     void OnInteract(glm::ivec3 pos, MeshingEngine *engine) override {
         if (!m_enabled) return;
         if (m_durability == 1) return;
-        if (m_storage.count != 0) return;
+        if (!m_storage.empty()) return;
         m_durability--;
 
         m_count++;
         if (m_count >= 5) {
             m_count = 0;
 
-            /*
-            engine->SetBlock(pos + glm::ivec3{0, 0, 1}, {});
-            engine->Request(glm::ivec3{
-                static_cast<int>(std::floor(static_cast<float>(pos.x) / CHUNK_WIDTH)),
-                static_cast<int>(std::floor(static_cast<float>(pos.y) / CHUNK_HEIGHT)),
-                static_cast<int>(std::floor(static_cast<float>(pos.z) / CHUNK_DEPTH))
-            });
-            */
+            m_storage.resize(1);
 
             if (rand() % 100 < 20) {
-                m_storage = {ItemID::IRON_DUST, 2};
+                m_storage[0] = {ItemID::IRON_DUST, 2};
+                printf("Got iron dust\n");
             } else if (rand() % 100 < 30) {
-                m_storage = {ItemID::COAL_DUST, 3};
+                m_storage[0] = {ItemID::COAL_DUST, 3};
+                printf("Got coal dust\n");
             } else {
-                m_storage = {ItemID::STONE_DUST, 4};
+                m_storage[0] = {ItemID::STONE_DUST, 4};
+                printf("Got stone dust\n");
             }
         }
     }
@@ -40,9 +35,12 @@ public:
     }
     void OnBreak() override {}
     void Tick(glm::ivec3 pos, MeshingEngine *engine) override {}
+    std::vector<ItemStack> &GetStorage() override {
+        return m_storage;
+    }
 private:
     uint8_t m_count = 0;
     uint8_t m_durability = 50;
     bool m_enabled = false;
-    ItemStack m_storage = {ItemID::EMPTY, 0};
+    std::vector<ItemStack> m_storage;
 };
